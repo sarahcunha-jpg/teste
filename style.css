@@ -1,0 +1,118 @@
+/* style.css */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f1f5f9;
+  color: #1e293b;
+  padding: 20px;
+}
+
+header {
+  background: #1e3a8a;
+  color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+h1 { font-size: 1.6rem; }
+h2 { margin: 20px 0 12px; color: #1e3a8a; }
+h3 { margin-bottom: 10px; font-size: 1rem; color: #334155; }
+
+section {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Dashboard */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
+  color: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.card-valor {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* Gráficos */
+.graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.grafico-box {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.grafico-box canvas { max-height: 250px; }
+
+/* Alertas */
+.alertas-box {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Tabelas */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+th {
+  background: #1e3a8a;
+  color: #fff;
+  padding: 10px;
+  text-align: left;
+}
+
+td {
+  padding: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+tr:hover { background: #f1f5f9; }
+
+/* Inputs */
+input[type="text"] {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  width: 250px;
+  font-size: 0.9rem;
+}
+
+/* Mapa */
+#mapa { box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+
+/* Responsivo */
+@media (max-width: 768px) {
+  table { font-size: 0.8rem; }
+  th, td { padding: 6px; }
+  .card-valor { font-size: 1.5rem; }
+  input[type="text"] { width: 100%; margin-bottom: 10px; }
+}
