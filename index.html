@@ -47,6 +47,7 @@ html,body,#app{height:100%;width:100%}
 .charts-container{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
 button{background:var(--azul-medio);color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:.3s}
 button:hover{background:var(--azul-marinho)}
+button:disabled{opacity:.6;cursor:not-allowed}
 button.secondary{background:#e0e0e0;color:var(--texto)}
 button.secondary:hover{background:#d0d0d0}
 button.danger{background:var(--vermelho)}
@@ -120,6 +121,10 @@ table tbody tr:hover{background:#f9f9f9}
 .container{flex-direction:column}
 table{font-size:12px}
 table th,table td{padding:8px}
+#mapGrid{grid-template-columns:1fr !important}
+#map{height:320px !important}
+.map-controls{flex-direction:column}
+.map-controls button{min-width:auto;width:100%}
 }
 </style>
 </head>
@@ -250,24 +255,30 @@ table th,table td{padding:8px}
 
   <!-- RASTREAMENTO -->
   <div id="rastreamento" class="page">
-    <h1 style="margin-bottom:20px;font-size:28px;font-weight:700;">Rastreamento</h1>
+    <h1 style="margin-bottom:20px; font-size: 28px; font-weight: 700;">Rastreamento</h1>
+
     <div class="alert info" style="margin-bottom:20px;">
-      <strong>ℹ️ Modo de visualização</strong>
-      <p>Este sistema não possui integração real com GPS. As viaturas exibidas no mapa são aquelas que possuem coordenadas cadastradas manualmente. Nenhuma localização é simulada em tempo real.</p>
+      <strong>ℹ️ Modo de visualização — sem GPS real</strong>
+      <p>Este sistema não possui integração com GPS. As viaturas no mapa são localizadas pelo <b>endereço cadastrado</b> (geocodificação OpenStreetMap/Nominatim). Se o endereço não for encontrado, a viatura salva normalmente mas não aparece no mapa.</p>
     </div>
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;" id="mapGrid">
-      <div class="card" style="padding:0;overflow:hidden;"><div id="map"></div></div>
+
+    <div id="mapGrid" style="display: grid; grid-template-columns: 75% 1fr; gap: 20px;">
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <div id="map"></div>
+      </div>
+
       <div>
         <div class="card">
-          <h4 style="margin-bottom:10px;">Camadas do Mapa</h4>
+          <h4 style="margin-bottom: 10px;">Camadas do Mapa</h4>
           <div class="map-controls">
-            <button onclick="changeMapType('osm')" id="btnMapOsm" class="secondary">🗺️ Rua</button>
+            <button onclick="changeMapType('osm')" id="btnMapOsm">🗺️ Rua</button>
             <button onclick="changeMapType('satellite')" id="btnMapSat" class="secondary">📡 Satélite</button>
             <button onclick="changeMapType('terrain')" id="btnMapTerrain" class="secondary">🏔️ Terreno</button>
           </div>
         </div>
+
         <div class="card">
-          <h4 style="margin-bottom:10px;">Viaturas</h4>
+          <h4 style="margin-bottom: 10px;">Viaturas</h4>
           <div class="viaturas-list" id="viaturasMapList"></div>
         </div>
       </div>
@@ -329,10 +340,17 @@ table th,table td{padding:8px}
         <div class="form-group"><label>Próxima Manutenção (KM)</label><input type="number" id="vProxKm" min="0" placeholder="Ex: 50000"></div>
         <div class="form-group"><label>Próxima Manutenção (Data)</label><input type="date" id="vProxData"></div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Latitude (opcional)</label><input type="number" step="0.000001" id="vLat" placeholder="-26.9124"></div>
-        <div class="form-group"><label>Longitude (opcional)</label><input type="number" step="0.000001" id="vLng" placeholder="-49.0655"></div>
+
+      <div class="form-group">
+        <label>Endereço <small style="font-weight:400;color:#666;">(Rua, número, cidade — Brasil)</small></label>
+        <input type="text" id="vEndereco" placeholder="Ex: Rua XV de Novembro, 500, Blumenau - SC">
+        <small id="vGeoStatus" style="display:block;margin-top:4px;font-size:12px;color:#666;"></small>
       </div>
+      <div class="form-row">
+        <div class="form-group"><label>Latitude (auto)</label><input type="text" id="vLat" readonly style="background:#f0f0f0;"></div>
+        <div class="form-group"><label>Longitude (auto)</label><input type="text" id="vLng" readonly style="background:#f0f0f0;"></div>
+      </div>
+
       <div class="form-group"><label>Observações</label><textarea id="vObs"></textarea></div>
       <div class="btn-group">
         <button type="submit" style="flex:1;">Salvar</button>
@@ -396,27 +414,23 @@ table th,table td{padding:8px}
 
 <script>
 /* ============================================================
-   CAMADA DE DADOS ÚNICA (fonte de verdade para todo o sistema)
+   CAMADA DE DADOS ÚNICA
    ============================================================ */
 const DB_KEY = 'frotapm_db';
 const DB_VERSION = 2;
 
-const DEFAULT_DATA = {
-  version: DB_VERSION,
-  viaturas: [],
-  ordensServico: []
-};
+const DEFAULT_DATA = { version: DB_VERSION, viaturas: [], ordensServico: [] };
 
 function migrateDB(db){
-  // Migração v1 → v2: normaliza status e adiciona campos
   if(!db.version || db.version < 2){
     (db.viaturas||[]).forEach(v=>{
-      // Padroniza status
       if(v.status === 'Em operação') v.status = 'Operacional';
       if(!v.tipo) v.tipo = 'Viatura Operacional';
       if(!v.observacoes) v.observacoes = '';
       if(typeof v.latitude === 'undefined') v.latitude = null;
       if(typeof v.longitude === 'undefined') v.longitude = null;
+      if(typeof v.endereco === 'undefined') v.endereco = '';
+      if(typeof v.enderecoFormatado === 'undefined') v.enderecoFormatado = '';
     });
     (db.ordensServico||[]).forEach(o=>{
       if(!o.tipo) o.tipo = 'Corretiva';
@@ -437,10 +451,7 @@ const Store = {
       const raw = localStorage.getItem(DB_KEY);
       if(!raw) return null;
       return migrateDB(JSON.parse(raw));
-    }catch(e){
-      console.error('Erro ao ler DB:', e);
-      return null;
-    }
+    }catch(e){ console.error('Erro ao ler DB:', e); return null; }
   },
   write(db){
     try{
@@ -454,11 +465,10 @@ const Store = {
       db = JSON.parse(JSON.stringify(DEFAULT_DATA));
       this.write(db);
     } else if(db.version !== DB_VERSION){
-      this.write(db); // persistir migração
+      this.write(db);
     }
   },
   getAll(){ return this.read() || JSON.parse(JSON.stringify(DEFAULT_DATA)); },
-  // VIATURAS
   listarViaturas(){ return this.getAll().viaturas; },
   getViatura(id){ return this.listarViaturas().find(v => v.id === id); },
   salvarViatura(v){
@@ -476,11 +486,9 @@ const Store = {
   excluirViatura(id){
     const db = this.getAll();
     db.viaturas = db.viaturas.filter(v => v.id !== id);
-    // Ordens relacionadas: mantém histórico mas marca viatura órfã? Aqui removemos em cascata com aviso prévio.
     db.ordensServico = db.ordensServico.filter(o => o.viaturaId !== id);
     this.write(db);
   },
-  // ORDENS
   listarOrdens(){ return this.getAll().ordensServico; },
   getOrdem(id){ return this.listarOrdens().find(o => o.id === id); },
   salvarOrdem(o){
@@ -538,7 +546,35 @@ function confirmar(msg, onOk){
 }
 
 /* ============================================================
-   CÁLCULOS (KPIs derivados — usados por Dashboard, Indicadores, Gráficos)
+   GEOCODIFICAÇÃO via Nominatim (OpenStreetMap) — Brasil
+   Sem API key. Respeita 1 req/s (uso manual, sem problema).
+   ============================================================ */
+async function geocodificar(endereco){
+  if(!endereco || !endereco.trim()) return null;
+  // Se o usuário não escreveu "Brasil", reforçamos no texto e restringimos o país.
+  let q = endereco.trim();
+  if(!/\bbrasil\b/i.test(q)) q += ', Brasil';
+  const url = 'https://nominatim.openstreetmap.org/search?'
+    + 'format=json&limit=1&addressdetails=1&countrycodes=br'
+    + '&q=' + encodeURIComponent(q);
+  try{
+    const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const arr = await resp.json();
+    if(!Array.isArray(arr) || !arr.length) return null;
+    return {
+      latitude: parseFloat(arr[0].lat),
+      longitude: parseFloat(arr[0].lon),
+      enderecoFormatado: arr[0].display_name
+    };
+  }catch(e){
+    console.error('Erro ao geocodificar:', e);
+    return null;
+  }
+}
+
+/* ============================================================
+   CÁLCULOS (KPIs)
    ============================================================ */
 function calcularKPIs(db){
   db = db || Store.getAll();
@@ -552,10 +588,8 @@ function calcularKPIs(db){
   const osConcluidas = ordens.filter(o=>o.status==='Concluída');
   const custoTotal = osConcluidas.reduce((s,o)=>s + (Number(o.custo)||0), 0);
   const disponibilidade = total ? (emOp / total) * 100 : 0;
-  // MTTR = média do tempo de parada (horas) das corretivas concluídas
   const corretivas = osConcluidas.filter(o=>o.tipo==='Corretiva');
   const mttr = corretivas.length ? corretivas.reduce((s,o)=>s+(Number(o.tempoParada)||0),0) / corretivas.length : 0;
-  // MTBF = média de dias entre corretivas (ordena por data)
   let mtbf = 0;
   if(corretivas.length >= 2){
     const ordenadas = [...corretivas].sort((a,b)=> new Date(a.data) - new Date(b.data));
@@ -570,7 +604,6 @@ function calcularKPIs(db){
            custoTotal, disponibilidade, mttr, mtbf, custoMedio };
 }
 
-/* Agrupa ordens concluídas por mês (últimos N meses) */
 function ordensPorMes(ordens, meses=6){
   const agora = new Date();
   const resultado = [];
@@ -592,7 +625,6 @@ function ordensPorMes(ordens, meses=6){
   return resultado;
 }
 
-/* Extrai categorias de falha a partir da descrição */
 function categorizarFalha(texto){
   const t = (texto||'').toLowerCase();
   if(/motor|óleo|oleo|ignição|ignicao/.test(t)) return 'Motor';
@@ -633,6 +665,8 @@ function openViaturaModal(id){
   form.reset();
   document.getElementById('viaturaId').value = '';
   document.getElementById('modalViaturaTitle').textContent = 'Nova Viatura';
+  const st = document.getElementById('vGeoStatus');
+  if(st) st.textContent = '';
   if(id){
     const v = Store.getViatura(id);
     if(!v) return;
@@ -648,30 +682,57 @@ function openViaturaModal(id){
     document.getElementById('vUnidade').value = v.unidade || '';
     document.getElementById('vProxKm').value = v.proximaManutencaoKm || '';
     document.getElementById('vProxData').value = v.proximaManutencaoData || '';
+    document.getElementById('vEndereco').value = v.endereco || '';
     document.getElementById('vLat').value = v.latitude ?? '';
     document.getElementById('vLng').value = v.longitude ?? '';
     document.getElementById('vObs').value = v.observacoes || '';
+    if(st && v.endereco) st.textContent = '📍 Endereço salvo. Re-salve para atualizar se mudou.';
   }
   openModal('modalViatura');
 }
 
-function salvarViatura(e){
+async function salvarViatura(e){
   e.preventDefault();
   const id = document.getElementById('viaturaId').value;
   const placa = document.getElementById('vPlaca').value.trim().toUpperCase();
   const numero = document.getElementById('vNumero').value.trim().toUpperCase();
   const ano = parseInt(document.getElementById('vAno').value);
   const km = parseInt(document.getElementById('vKm').value);
+  const endereco = document.getElementById('vEndereco').value.trim();
 
-  // Validações
   if(!placa){ toast('Placa é obrigatória', 'error'); return; }
   if(!numero){ toast('Número é obrigatório', 'error'); return; }
   if(ano < 1980 || ano > 2100){ toast('Ano inválido', 'error'); return; }
   if(isNaN(km) || km < 0){ toast('Quilometragem inválida', 'error'); return; }
 
-  // Placa duplicada
   const duplicada = Store.listarViaturas().find(v => v.placa === placa && v.id !== Number(id) && v.id !== parseInt(id));
   if(duplicada){ toast(`Placa ${placa} já cadastrada na viatura ${duplicada.numero}`, 'error'); return; }
+
+  let latitude = null, longitude = null, enderecoFormatado = '';
+  const status = document.getElementById('vGeoStatus');
+  const saveBtn = e.target.querySelector('button[type="submit"]');
+
+  if(endereco){
+    if(status) status.textContent = '🔎 Localizando endereço...';
+    if(saveBtn) saveBtn.disabled = true;
+    const geo = await geocodificar(endereco);
+    if(saveBtn) saveBtn.disabled = false;
+
+    if(!geo){
+      if(status) status.textContent = '';
+      const continuar = confirm(
+        'Não foi possível localizar este endereço.\n\n' +
+        'Deseja salvar a viatura mesmo assim (sem aparecer no mapa)?'
+      );
+      if(!continuar) return;
+      toast('Endereço não encontrado — viatura salva sem localização.', 'warning');
+    } else {
+      latitude = geo.latitude;
+      longitude = geo.longitude;
+      enderecoFormatado = geo.enderecoFormatado;
+      if(status) status.textContent = '✓ Localizado: ' + enderecoFormatado;
+    }
+  }
 
   const v = {
     id: id ? Number(id) : undefined,
@@ -683,17 +744,33 @@ function salvarViatura(e){
     unidade: document.getElementById('vUnidade').value.trim(),
     proximaManutencaoKm: parseInt(document.getElementById('vProxKm').value) || null,
     proximaManutencaoData: document.getElementById('vProxData').value || null,
-    latitude: document.getElementById('vLat').value ? parseFloat(document.getElementById('vLat').value) : null,
-    longitude: document.getElementById('vLng').value ? parseFloat(document.getElementById('vLng').value) : null,
+    endereco: endereco || '',
+    enderecoFormatado: enderecoFormatado || '',
+    latitude,
+    longitude,
     observacoes: document.getElementById('vObs').value.trim()
   };
   if(!v.id) delete v.id;
+
+  // Se editou e deixou o endereço em branco, preserva lat/lng antigos
+  if(id && !endereco){
+    const antiga = Store.getViatura(Number(id));
+    if(antiga){
+      v.latitude = antiga.latitude;
+      v.longitude = antiga.longitude;
+      v.enderecoFormatado = antiga.enderecoFormatado || '';
+    }
+  }
 
   Store.salvarViatura(v);
   closeModal('modalViatura');
   toast(id ? 'Viatura atualizada com sucesso!' : 'Viatura cadastrada com sucesso!');
   renderViaturas();
   renderDashboard();
+  if(document.getElementById('rastreamento').classList.contains('active')){
+    renderMapMarkers();
+    renderMapList();
+  }
 }
 
 function excluirViatura(id){
@@ -761,7 +838,6 @@ function openOrdemModal(id){
   document.getElementById('ordemId').value = '';
   document.getElementById('modalOrdemTitle').textContent = 'Nova Ordem de Serviço';
 
-  // Popular select de viaturas
   const sel = document.getElementById('oViatura');
   const viaturas = Store.listarViaturas();
   if(!viaturas.length){
@@ -834,18 +910,15 @@ function salvarOrdem(e){
 
   Store.salvarOrdem(o);
 
-  // Se concluída e KM informada, atualizar viatura
   if(o.status === 'Concluída' && o.quilometragem > 0){
     const v = Store.getViatura(viaturaId);
     if(v && o.quilometragem > (v.quilometragem || 0)){
       Store.salvarViatura({ ...v, quilometragem: o.quilometragem });
     }
-    // Se viatura estava em manutenção, mover para Operacional
     if(v && v.status === 'Em Manutenção'){
       Store.salvarViatura({ ...v, status: 'Operacional' });
     }
   }
-  // Se Em andamento, marca viatura como Em Manutenção
   if(o.status === 'Em andamento' && viatura.status !== 'Em Manutenção'){
     Store.salvarViatura({ ...viatura, status: 'Em Manutenção' });
   }
@@ -936,13 +1009,12 @@ function renderOrdens(){
 }
 
 /* ============================================================
-   HISTÓRICO (derivado das ordens concluídas)
+   HISTÓRICO
    ============================================================ */
 function renderHistorico(){
   const viaturas = Store.listarViaturas();
   const concluidas = Store.listarOrdens().filter(o => o.status === 'Concluída');
 
-  // Atualizar select de viaturas no filtro
   const selV = document.getElementById('histViaturaFilter');
   if(selV && selV.options.length <= 1){
     selV.innerHTML = '<option value="">Todas as Viaturas</option>' +
@@ -970,7 +1042,6 @@ function renderHistorico(){
     return true;
   }).sort((a,b)=> new Date(b.data) - new Date(a.data));
 
-  // Totais (das ordens filtradas)
   const custo = lista.reduce((s,o)=>s+(Number(o.custo)||0),0);
   const tempo = lista.reduce((s,o)=>s+(Number(o.tempoParada)||0),0);
   document.getElementById('histCusto').textContent = fmtMoeda(custo);
@@ -1065,7 +1136,6 @@ function renderAlertas(){
     }
   });
 
-  // OS atrasadas (agendadas com data passada)
   db.ordensServico.forEach(o=>{
     if(o.status === 'Agendada'){
       const d = new Date(o.data + 'T00:00:00');
@@ -1087,29 +1157,25 @@ function renderChartsDashboard(){
   const db = Store.getAll();
   const ordens = db.ordensServico;
 
-  // Manutenções por mês (baseado nas ordens concluídas)
   const porMes = ordensPorMes(ordens.filter(o=>o.status==='Concluída'), 6);
   drawChart('chartManutencoes', 'bar', {
     labels: porMes.map(m=>m.label),
     datasets: [{ label:'Manutenções', data: porMes.map(m=>m.total), backgroundColor:'#1B4F72' }]
   });
 
-  // Status das viaturas
   const k = calcularKPIs(db);
-  const totalStatus = k.emOp + k.emMan + k.indisp;
   drawChart('chartStatus', 'doughnut', {
     labels: ['Operacional','Em Manutenção','Indisponível'],
     datasets: [{ data:[k.emOp, k.emMan, k.indisp], backgroundColor:['#2ECC71','#F39C12','#E74C3C'] }]
-  }, totalStatus === 0 ? 'Nenhuma viatura cadastrada.' : null);
+  });
 }
 
-function drawChart(canvasId, type, data, emptyMsg){
+function drawChart(canvasId, type, data){
   const canvas = document.getElementById(canvasId);
   if(!canvas) return;
   const ctx = canvas.getContext('2d');
   if(charts[canvasId]) charts[canvasId].destroy();
 
-  // Caso vazio
   const ds = data?.datasets?.[0]?.data || [];
   const semDados = ds.every(v => !v);
 
@@ -1119,10 +1185,7 @@ function drawChart(canvasId, type, data, emptyMsg){
     options: {
       responsive:true,
       maintainAspectRatio:true,
-      plugins:{
-        legend:{ display: type !== 'bar' || semDados ? true : true },
-        tooltip:{ enabled: !semDados }
-      },
+      plugins:{ legend:{ display:true }, tooltip:{ enabled: !semDados } },
       scales: (type==='bar'||type==='line') ? { y:{ beginAtZero:true } } : undefined
     }
   });
@@ -1140,15 +1203,12 @@ function renderIndicadores(){
   document.getElementById('kpiMtbf').textContent = k.mtbf > 0 ? k.mtbf.toFixed(1) + ' d' : '—';
   document.getElementById('kpiCustoMedio').textContent = fmtMoeda(k.custoMedio);
 
-  // Disponibilidade por mês (linha)
   const ordens = db.ordensServico;
   const agora = new Date();
   const labels = [], dados = [];
   for(let i = 5; i >= 0; i--){
     const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
     labels.push(d.toLocaleDateString('pt-BR',{month:'short'}).replace('.',''));
-    // Aproximação: viaturas operacionais hoje vs total (não temos histórico real)
-    // Como não guardamos snapshot por mês, mostramos a disponibilidade atual repetida
     dados.push(k.disponibilidade);
   }
   drawChart('chartDisponibilidade', 'line', {
@@ -1156,7 +1216,6 @@ function renderIndicadores(){
     datasets:[{ label:'Disponibilidade (%)', data:dados, borderColor:'#2ECC71', backgroundColor:'rgba(46,204,113,.15)', tension:.3, fill:true }]
   });
 
-  // Tipos de falhas — apenas corretivas concluídas
   const corr = ordens.filter(o=>o.status==='Concluída' && o.tipo==='Corretiva');
   const cats = {};
   corr.forEach(o=>{
@@ -1167,9 +1226,8 @@ function renderIndicadores(){
   drawChart('chartFalhas', 'doughnut', {
     labels: corLabel.length?corLabel:['Sem dados'],
     datasets:[{ data: corData.length?corData:[1], backgroundColor:['#E74C3C','#F39C12','#F4C430','#2ECC71','#1B4F72','#9B59B6'] }]
-  }, corData.length?null:'Nenhuma manutenção corretiva registrada.');
+  });
 
-  // Custos por mês
   const custos = ordensPorMes(ordens.filter(o=>o.status==='Concluída'), 6);
   drawChart('chartCustos', 'bar', {
     labels: custos.map(m=>m.label),
@@ -1178,106 +1236,132 @@ function renderIndicadores(){
 }
 
 /* ============================================================
-   MAPA / RASTREAMENTO
+   MAPA / RASTREAMENTO — geocodificado por endereço (Nominatim)
    ============================================================ */
-let map = null, markers = {};
-const mapLayers = {
-  osm: () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }),
-  satellite: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution:'© Esri' }),
-  terrain: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution:'© OpenTopoMap' })
-};
+let map = null;
+let markers = {};
 let currentLayer = null;
 
-function initMap(){
-  const el = document.getElementById('map');
-  if(!el) return;
-  if(map){ setTimeout(()=>map.invalidateSize(), 100); renderMapMarkers(); return; }
+const mapLayers = {
+  osm:       () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',            { attribution: '© OpenStreetMap' }),
+  satellite: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' }),
+  terrain:   () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',              { attribution: '© OpenTopoMap' })
+};
 
+function initMap() {
+  const el = document.getElementById('map');
+  if (!el) return;
+  if (map) {
+    setTimeout(() => map.invalidateSize(), 100);
+    renderMapMarkers();
+    return;
+  }
   map = L.map('map').setView([-26.9124, -49.0655], 13);
   currentLayer = mapLayers.osm().addTo(map);
   renderMapMarkers();
 }
 
-function renderMapMarkers(){
-  if(!map) return;
+function changeMapType(type) {
+  if (!map || !mapLayers[type]) return;
+  if (currentLayer) map.removeLayer(currentLayer);
+  currentLayer = mapLayers[type]().addTo(map);
+  const mapBtns = { osm: 'btnMapOsm', satellite: 'btnMapSat', terrain: 'btnMapTerrain' };
+  Object.keys(mapBtns).forEach(t => {
+    const b = document.getElementById(mapBtns[t]);
+    if (b) b.classList.toggle('secondary', t !== type);
+  });
+}
+
+function renderMapMarkers() {
+  if (!map) return;
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
 
-  const viaturas = Store.listarViaturas().filter(v => typeof v.latitude === 'number' && typeof v.longitude === 'number');
-  if(!viaturas.length){
-    // Nenhuma viatura com coordenadas
+  const viaturas = Store.listarViaturas().filter(v =>
+    typeof v.latitude === 'number' && !isNaN(v.latitude) &&
+    typeof v.longitude === 'number' && !isNaN(v.longitude)
+  );
+
+  if (!viaturas.length) {
     L.popup()
       .setLatLng([-26.9124, -49.0655])
-      .setContent('<b>Sem viaturas com coordenadas</b><br>Cadastre latitude/longitude em uma viatura para exibi-la no mapa.')
+      .setContent('<b>Nenhuma viatura com localização</b><br>Cadastre um endereço ao criar/editar uma viatura para que ela apareça no mapa.')
       .openOn(map);
     return;
   }
-  viaturas.forEach(v=>{
-    const cor = v.status === 'Operacional' ? '#2ECC71' : v.status === 'Em Manutenção' ? '#F39C12' : '#E74C3C';
+
+  viaturas.forEach(v => {
+    const cor = v.status === 'Operacional' ? '#2ECC71'
+              : v.status === 'Em Manutenção' ? '#F39C12'
+              : '#E74C3C';
     const icon = L.divIcon({
-      html:`<div style="background:${cor};color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);">🚔</div>`,
-      iconSize:[36,36], iconAnchor:[18,18]
+      html: `<div style="background:${cor};color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);">🚔</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
     });
     const m = L.marker([v.latitude, v.longitude], { icon })
-      .bindPopup(`<strong>${esc(v.numero)}</strong><br>Placa: ${esc(v.placa)}<br>Modelo: ${esc(v.modelo)}<br>Status: ${esc(v.status)}<br>Unidade: ${esc(v.unidade)}`)
+      .bindPopup(
+        `<strong>${esc(v.numero)}</strong><br>` +
+        `Placa: ${esc(v.placa)}<br>` +
+        `Modelo: ${esc(v.modelo)}<br>` +
+        `Status: ${esc(v.status)}<br>` +
+        `Unidade: ${esc(v.unidade)}` +
+        (v.enderecoFormatado || v.endereco
+          ? `<br><hr style="margin:6px 0;"><small>📍 ${esc(v.enderecoFormatado || v.endereco)}</small>`
+          : '')
+      )
       .addTo(map);
     markers[v.id] = m;
   });
-  // Centraliza na primeira
+
   const first = Object.values(markers)[0];
-  if(first) map.setView(first.getLatLng(), 13);
+  if (first) map.setView(first.getLatLng(), 13);
 }
 
-function renderMapList(){
+function renderMapList() {
   const cont = document.getElementById('viaturasMapList');
-  if(!cont) return;
+  if (!cont) return;
   const viaturas = Store.listarViaturas();
-  if(!viaturas.length){
-    cont.innerHTML = `<div class="empty-state"><i class="fas fa-car"></i>Nenhuma viatura cadastrada.</div>`;
+
+  if (!viaturas.length) {
+    cont.innerHTML = `<div class="empty-state" style="padding:20px;">
+      <i class="fas fa-car"></i>Nenhuma viatura cadastrada.</div>`;
     return;
   }
-  cont.innerHTML = viaturas.map(v=>`
-    <div class="viatura-item" onclick="focusViatura(${v.id})">
-      <strong>${esc(v.numero)} ${v.latitude!==null?'📍':'⚠️'}</strong>
-      <small>Placa: ${esc(v.placa)} • ${esc(v.modelo)}<br>KM: ${fmtNum(v.quilometragem)} • ${esc(v.unidade)}</small>
-    </div>`).join('');
+
+  cont.innerHTML = viaturas.map(v => {
+    const temCoord = typeof v.latitude === 'number' && typeof v.longitude === 'number';
+    const icone = temCoord ? '📍' : '⚠️';
+    const cor = v.status === 'Operacional' ? '#2ECC71'
+              : v.status === 'Em Manutenção' ? '#F39C12'
+              : '#E74C3C';
+    return `
+      <div class="viatura-item" style="border-left-color:${cor};" onclick="focusViatura(${v.id})">
+        <strong>${esc(v.numero)} ${icone}</strong>
+        <small>Placa: ${esc(v.placa)} • ${esc(v.modelo)}<br>KM: ${fmtNum(v.quilometragem)} • ${esc(v.unidade)}
+        ${temCoord
+          ? (v.endereco ? `<br>📍 ${esc(v.endereco)}` : '')
+          : '<br><em style="color:#E74C3C;">Sem endereço cadastrado</em>'}</small>
+      </div>`;
+  }).join('');
 }
 
-function focusViatura(id){
-  if(markers[id]){
+function focusViatura(id) {
+  if (markers[id]) {
     const ll = markers[id].getLatLng();
     map.setView(ll, 15);
     markers[id].openPopup();
   } else {
-    toast('Esta viatura não possui coordenadas cadastradas.', 'warning');
+    toast('Esta viatura não possui endereço cadastrado. Edite a viatura e informe o endereço.', 'warning');
   }
 }
 
-function changeMapType(type){
-  if(!map) return;
-  if(currentLayer) map.removeLayer(currentLayer);
-  currentLayer = mapLayers[type]().addTo(map);
-  ['osm','satellite','terrain'].forEach(t=>{
-    const btn = document.getElementById('btnMap' + (t==='osm'?'Osm':t==='satellite'?'Sat':'Terrain'));
-    if(btn) btn.classList.toggle('secondary', t !== type);
-  });
-}
-
 /* ============================================================
-   EVENTOS E INICIALIZAÇÃO
+   INICIALIZAÇÃO
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   Store.init();
 
-  // Se DB existia na v1, migração já foi aplicada em Store.read().
-  // Se DB vazio, popular com dados mínimos de exemplo (não fictícios do dashboard — só cadastros).
-  const db = Store.getAll();
-  if(!db.viaturas.length && !db.ordensServico.length && !localStorage.getItem('frotapm_seeded')){
-    // Sem seed fictício. O sistema funciona vazio. Registramos flag para não re-seedar.
-    localStorage.setItem('frotapm_seeded','1');
-  }
-
-  // Filters listeners
   ['viaturaFilter','viaturaStatusFilter','viaturaUnidadeFilter'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.addEventListener('input', renderViaturas);
@@ -1292,16 +1376,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const si = document.getElementById('searchInput');
   if(si) si.addEventListener('input', ()=>{
-    // busca global: foca em viaturas
     const vf = document.getElementById('viaturaFilter');
     if(vf){ vf.value = si.value; }
     if(document.getElementById('viaturas')?.classList.contains('active')) renderViaturas();
     else { showPage('viaturas'); renderViaturas(); }
   });
 
-  // Reagir a qualquer alteração do store
   window.addEventListener('frota:update', ()=>{
-    // Redesenha a página visível (mantém sincronia)
     const ativo = document.querySelector('.page.active')?.id;
     if(ativo === 'dashboard') renderDashboard();
     if(ativo === 'viaturas') renderViaturas();
@@ -1311,7 +1392,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if(ativo === 'rastreamento'){ renderMapMarkers(); renderMapList(); }
   });
 
-  // Render inicial
   renderDashboard();
   renderViaturas();
   renderOrdens();
