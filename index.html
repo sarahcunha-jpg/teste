@@ -1,1283 +1,1323 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frota PM - Blumenau | Sistema de Gestão da Frota</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <style>
-        :root {
-            --azul-marinho: #0D1B2A;
-            --azul-medio: #1B4F72;
-            --amarelo-ouro: #F4C430;
-            --verde: #2ECC71;
-            --laranja: #F39C12;
-            --vermelho: #E74C3C;
-            --cinza-claro: #F5F7FA;
-            --branco: #FFFFFF;
-            --texto: #2C3E50;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', 'Roboto', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background-color: var(--cinza-claro);
-            color: var(--texto);
-        }
-
-        html, body, #app {
-            height: 100%;
-            width: 100%;
-        }
-
-        .container {
-            display: flex;
-            height: 100vh;
-        }
-
-        .sidebar {
-            width: 280px;
-            background-color: var(--azul-marinho);
-            color: white;
-            padding: 20px;
-            overflow-y: auto;
-            position: fixed;
-            left: 0;
-            top: 0;
-            height: 100vh;
-            z-index: 1000;
-        }
-
-        .sidebar-logo {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 30px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .sidebar-menu {
-            list-style: none;
-        }
-
-        .sidebar-menu li {
-            margin: 15px 0;
-        }
-
-        .sidebar-menu a {
-            color: white;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 15px;
-            border-radius: 8px;
-            transition: 0.3s;
-            cursor: pointer;
-        }
-
-        .sidebar-menu a:hover,
-        .sidebar-menu a.active {
-            background-color: var(--azul-medio);
-            color: var(--amarelo-ouro);
-        }
-
-        .sidebar-profile {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .profile-user {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .profile-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: var(--amarelo-ouro);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            color: var(--azul-marinho);
-        }
-
-        .profile-info {
-            flex: 1;
-        }
-
-        .profile-info strong {
-            display: block;
-        }
-
-        .profile-info small {
-            display: block;
-            font-size: 12px;
-            opacity: 0.8;
-        }
-
-        .main-wrapper {
-            flex: 1;
-            margin-left: 280px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .navbar {
-            height: 70px;
-            background-color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            z-index: 999;
-        }
-
-        .navbar-search {
-            flex: 1;
-            max-width: 400px;
-            margin: 0 30px;
-        }
-
-        .navbar-search input {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-
-        .navbar-icons {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .navbar-icons i {
-            cursor: pointer;
-            font-size: 18px;
-            color: var(--texto);
-            transition: 0.3s;
-        }
-
-        .navbar-icons i:hover {
-            color: var(--azul-medio);
-        }
-
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
-
-        .page {
-            display: none;
-        }
-
-        .page.active {
-            display: block;
-        }
-
-        .card {
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            transition: 0.3s;
-        }
-
-        .card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid var(--azul-medio);
-        }
-
-        .stat-card.success {
-            border-left-color: var(--verde);
-        }
-
-        .stat-card.warning {
-            border-left-color: var(--laranja);
-        }
-
-        .stat-card.danger {
-            border-left-color: var(--vermelho);
-        }
-
-        .stat-card-value {
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--azul-marinho);
-            margin-bottom: 5px;
-        }
-
-        .stat-card-label {
-            font-size: 14px;
-            color: #999;
-        }
-
-        .charts-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        button {
-            background-color: var(--azul-medio);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: 0.3s;
-        }
-
-        button:hover {
-            background-color: var(--azul-marinho);
-        }
-
-        button.secondary {
-            background-color: #e0e0e0;
-            color: var(--texto);
-        }
-
-        button.secondary:hover {
-            background-color: #d0d0d0;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: white;
-        }
-
-        table thead {
-            background-color: var(--cinza-claro);
-        }
-
-        table th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 700;
-            border-bottom: 2px solid #ddd;
-        }
-
-        table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #eee;
-        }
-
-        table tbody tr:hover {
-            background-color: #f9f9f9;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .badge.success {
-            background-color: #e8f8f5;
-            color: var(--verde);
-        }
-
-        .badge.warning {
-            background-color: #fef5e7;
-            color: var(--laranja);
-        }
-
-        .badge.danger {
-            background-color: #fadbd8;
-            color: var(--vermelho);
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-            font-family: inherit;
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal-header h3 {
-            margin: 0;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #999;
-        }
-
-        #map {
-            width: 100%;
-            height: 500px;
-            border-radius: 10px;
-        }
-
-        .map-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        .map-controls button {
-            flex: 1;
-            min-width: 120px;
-        }
-
-        .viaturas-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .viatura-item {
-            padding: 10px;
-            background: #f9f9f9;
-            border-left: 4px solid #1B4F72;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .viatura-item:hover,
-        .viatura-item.active {
-            background: #e8f8f5;
-            border-left-color: #2ECC71;
-        }
-
-        .viatura-item strong {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .viatura-item small {
-            display: block;
-            color: #666;
-            font-size: 12px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--azul-medio);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .alert {
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            border-left: 4px solid;
-        }
-
-        .alert.success {
-            background-color: #e8f8f5;
-            border-left-color: var(--verde);
-            color: #27ae60;
-        }
-
-        .alert.warning {
-            background-color: #fef5e7;
-            border-left-color: var(--laranja);
-            color: #d68910;
-        }
-
-        .alert.danger {
-            background-color: #fadbd8;
-            border-left-color: var(--vermelho);
-            color: #c0392b;
-        }
-
-        .timeline {
-            position: relative;
-            padding-left: 60px;
-        }
-
-        .timeline::before {
-            content: '';
-            position: absolute;
-            left: 30px;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            background-color: var(--azul-medio);
-        }
-
-        .timeline-item {
-            position: relative;
-            margin-bottom: 30px;
-        }
-
-        .timeline-item::before {
-            content: '';
-            position: absolute;
-            left: -50px;
-            top: 0;
-            width: 20px;
-            height: 20px;
-            background-color: var(--azul-medio);
-            border: 3px solid white;
-            border-radius: 50%;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-
-            .main-wrapper {
-                margin-left: 0;
-            }
-
-            .navbar {
-                flex-direction: column;
-                height: auto;
-                gap: 10px;
-            }
-
-            .main-content {
-                margin-top: 0;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .charts-container {
-                grid-template-columns: 1fr;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .container {
-                flex-direction: column;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frota PM - Blumenau | Sistema de Gestão da Frota</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+:root{--azul-marinho:#0D1B2A;--azul-medio:#1B4F72;--amarelo-ouro:#F4C430;--verde:#2ECC71;--laranja:#F39C12;--vermelho:#E74C3C;--cinza-claro:#F5F7FA;--branco:#FFF;--texto:#2C3E50}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Roboto','Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--cinza-claro);color:var(--texto)}
+html,body,#app{height:100%;width:100%}
+.container{display:flex;height:100vh}
+.sidebar{width:280px;background:var(--azul-marinho);color:#fff;padding:20px;overflow-y:auto;position:fixed;left:0;top:0;height:100vh;z-index:1000}
+.sidebar-logo{font-size:24px;font-weight:700;margin-bottom:30px;display:flex;align-items:center;gap:10px}
+.sidebar-menu{list-style:none}
+.sidebar-menu li{margin:15px 0}
+.sidebar-menu a{color:#fff;text-decoration:none;display:flex;align-items:center;gap:10px;padding:10px 15px;border-radius:8px;transition:.3s;cursor:pointer}
+.sidebar-menu a:hover,.sidebar-menu a.active{background:var(--azul-medio);color:var(--amarelo-ouro)}
+.sidebar-profile{position:absolute;bottom:20px;left:20px;right:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,.2)}
+.profile-user{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.profile-avatar{width:40px;height:40px;border-radius:50%;background:var(--amarelo-ouro);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--azul-marinho)}
+.profile-info strong{display:block}
+.profile-info small{display:block;font-size:12px;opacity:.8}
+.main-wrapper{flex:1;margin-left:280px;display:flex;flex-direction:column}
+.navbar{height:70px;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 30px;box-shadow:0 2px 10px rgba(0,0,0,.1);z-index:999}
+.navbar-search{flex:1;max-width:400px;margin:0 30px}
+.navbar-search input{width:100%;padding:10px 15px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+.navbar-icons{display:flex;gap:20px;align-items:center}
+.navbar-icons i{cursor:pointer;font-size:18px;color:var(--texto);transition:.3s}
+.navbar-icons i:hover{color:var(--azul-medio)}
+.main-content{flex:1;padding:20px;overflow-y:auto}
+.page{display:none}
+.page.active{display:block}
+.card{background:#fff;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin-bottom:20px;transition:.3s}
+.card:hover{box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}
+.stat-card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);border-left:4px solid var(--azul-medio)}
+.stat-card.success{border-left-color:var(--verde)}
+.stat-card.warning{border-left-color:var(--laranja)}
+.stat-card.danger{border-left-color:var(--vermelho)}
+.stat-card-value{font-size:32px;font-weight:700;color:var(--azul-marinho);margin-bottom:5px}
+.stat-card-label{font-size:14px;color:#999}
+.charts-container{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
+button{background:var(--azul-medio);color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:.3s}
+button:hover{background:var(--azul-marinho)}
+button.secondary{background:#e0e0e0;color:var(--texto)}
+button.secondary:hover{background:#d0d0d0}
+button.danger{background:var(--vermelho)}
+button.danger:hover{background:#c0392b}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-group{display:flex;gap:10px;margin-top:15px}
+table{width:100%;border-collapse:collapse;background:#fff}
+table thead{background:var(--cinza-claro)}
+table th{padding:15px;text-align:left;font-weight:700;border-bottom:2px solid #ddd}
+table td{padding:12px 15px;border-bottom:1px solid #eee}
+table tbody tr:hover{background:#f9f9f9}
+.badge{display:inline-block;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.badge.success{background:#e8f8f5;color:var(--verde)}
+.badge.warning{background:#fef5e7;color:var(--laranja)}
+.badge.danger{background:#fadbd8;color:var(--vermelho)}
+.badge.info{background:#e3f2fd;color:#1976d2}
+.form-group{margin-bottom:15px}
+.form-group label{display:block;margin-bottom:5px;font-weight:600;font-size:13px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-family:inherit}
+.form-group textarea{resize:vertical;min-height:70px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center}
+.modal.active{display:flex}
+.modal-content{background:#fff;padding:30px;border-radius:10px;max-width:650px;width:90%;max-height:85vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-header h3{margin:0}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;padding:0}
+#map{width:100%;height:500px;border-radius:10px}
+.map-controls{display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap}
+.map-controls button{flex:1;min-width:100px}
+.viaturas-list{max-height:400px;overflow-y:auto}
+.viatura-item{padding:10px;background:#f9f9f9;border-left:4px solid #1B4F72;border-radius:4px;margin-bottom:10px;cursor:pointer;transition:.3s}
+.viatura-item:hover,.viatura-item.active{background:#e8f8f5;border-left-color:#2ECC71}
+.viatura-item strong{display:block;margin-bottom:5px}
+.viatura-item small{display:block;color:#666;font-size:12px}
+.spinner{border:4px solid #f3f3f3;border-top:4px solid var(--azul-medio);border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.alert{padding:12px;margin-bottom:15px;border-radius:4px;border-left:4px solid}
+.alert.success{background:#e8f8f5;border-left-color:var(--verde);color:#27ae60}
+.alert.warning{background:#fef5e7;border-left-color:var(--laranja);color:#d68910}
+.alert.danger{background:#fadbd8;border-left-color:var(--vermelho);color:#c0392b}
+.alert.info{background:#e3f2fd;border-left-color:#1976d2;color:#1565c0}
+.alert strong{display:block;margin-bottom:4px}
+.alert p{font-size:12px}
+.timeline{position:relative;padding-left:60px}
+.timeline::before{content:'';position:absolute;left:30px;top:0;bottom:0;width:2px;background:var(--azul-medio)}
+.timeline-item{position:relative;margin-bottom:30px}
+.timeline-item::before{content:'';position:absolute;left:-50px;top:0;width:20px;height:20px;background:var(--azul-medio);border:3px solid #fff;border-radius:50%}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:15px}
+.filters input,.filters select{padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:100%}
+.empty-state{text-align:center;padding:40px;color:#999}
+.empty-state i{font-size:48px;margin-bottom:15px;opacity:.5;display:block}
+#toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px}
+.toast{padding:14px 20px;border-radius:8px;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:slideIn .3s ease;min-width:280px;font-size:14px;font-weight:600}
+.toast.success{background:var(--verde)}
+.toast.error{background:var(--vermelho)}
+.toast.warning{background:var(--laranja)}
+.toast.info{background:var(--azul-medio)}
+@keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
+.actions-cell{display:flex;gap:5px;flex-wrap:wrap}
+@media (max-width:768px){
+.sidebar{width:100%;height:auto;position:relative}
+.main-wrapper{margin-left:0}
+.navbar{flex-direction:column;height:auto;gap:10px;padding:10px}
+.navbar-search{max-width:none;margin:0}
+.main-content{margin-top:0}
+.stats-grid{grid-template-columns:1fr}
+.charts-container{grid-template-columns:1fr}
+.form-row,.form-row-3{grid-template-columns:1fr}
+.container{flex-direction:column}
+table{font-size:12px}
+table th,table td{padding:8px}
+}
+</style>
 </head>
 <body>
-    <div id="app" class="container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-logo">
-                <i class="fas fa-shield-alt"></i>
-                <span>Frota PM</span>
-            </div>
-
-            <ul class="sidebar-menu">
-                <li><a href="#" onclick="showPage('dashboard')" class="menu-link active" data-page="dashboard"><i class="fas fa-home"></i> <span>Dashboard</span></a></li>
-                <li><a href="#" onclick="showPage('viaturas')" class="menu-link" data-page="viaturas"><i class="fas fa-car"></i> <span>Viaturas</span></a></li>
-                <li><a href="#" onclick="showPage('ordens')" class="menu-link" data-page="ordens"><i class="fas fa-list"></i> <span>Ordens de Serviço</span></a></li>
-                <li><a href="#" onclick="showPage('historico')" class="menu-link" data-page="historico"><i class="fas fa-history"></i> <span>Histórico</span></a></li>
-                <li><a href="#" onclick="showPage('rastreamento')" class="menu-link" data-page="rastreamento"><i class="fas fa-map-marker-alt"></i> <span>Rastreamento</span></a></li>
-                <li><a href="#" onclick="showPage('indicadores')" class="menu-link" data-page="indicadores"><i class="fas fa-chart-bar"></i> <span>Indicadores</span></a></li>
-            </ul>
-
-            <div class="sidebar-profile">
-                <div class="profile-user">
-                    <div class="profile-avatar">RC</div>
-                    <div class="profile-info">
-                        <strong>Rayane Cruz</strong>
-                        <small>Administrador</small>
-                    </div>
-                </div>
-                <button class="secondary" style="width: 100%; margin-top: 10px;"><i class="fas fa-sign-out-alt"></i> Sair</button>
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-wrapper">
-            <!-- Navbar -->
-            <nav class="navbar">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <h1 style="font-size: 24px; font-weight: 700; margin: 0;">Frota PM - Blumenau</h1>
-                </div>
-
-                <div class="navbar-search">
-                    <input type="text" placeholder="🔍 Pesquisar viaturas..." id="searchInput">
-                </div>
-
-                <div class="navbar-icons">
-                    <i class="fas fa-bell"></i>
-                    <i class="fas fa-cog"></i>
-                </div>
-            </nav>
-
-            <!-- Main Content Area -->
-            <div class="main-content">
-                <!-- Dashboard Page -->
-                <div id="dashboard" class="page active">
-                    <h1 style="margin-bottom: 30px; font-size: 28px; font-weight: 700;">Dashboard</h1>
-
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-card-value" id="totalViaturas">0</div>
-                            <div class="stat-card-label">Total de Viaturas</div>
-                        </div>
-                        <div class="stat-card success">
-                            <div class="stat-card-value" id="emOperacao">0</div>
-                            <div class="stat-card-label">Em Operação</div>
-                        </div>
-                        <div class="stat-card warning">
-                            <div class="stat-card-value" id="emManutencao">0</div>
-                            <div class="stat-card-label">Em Manutenção</div>
-                        </div>
-                        <div class="stat-card danger">
-                            <div class="stat-card-value" id="indisponivel">0</div>
-                            <div class="stat-card-label">Indisponível</div>
-                        </div>
-                    </div>
-
-                    <div class="charts-container">
-                        <div class="card">
-                            <h3>Manutenções por Mês</h3>
-                            <canvas id="chartManutencoes"></canvas>
-                        </div>
-                        <div class="card">
-                            <h3>Status das Viaturas</h3>
-                            <canvas id="chartStatus"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="card" style="margin-top: 20px;">
-                        <h3>Alertas Importantes</h3>
-                        <div id="alertasContainer"></div>
-                    </div>
-                </div>
-
-                <!-- Viaturas Page -->
-                <div id="viaturas" class="page">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h1 style="font-size: 28px; font-weight: 700;">Cadastro de Viaturas</h1>
-                        <button onclick="openNovaViaturaModal()"><i class="fas fa-plus"></i> Nova Viatura</button>
-                    </div>
-
-                    <div class="card" style="margin-bottom: 20px;">
-                        <input type="text" placeholder="🔍 Filtrar por número ou placa..." id="viaturaFilter" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                    </div>
-
-                    <div class="card">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Número</th>
-                                    <th>Placa</th>
-                                    <th>Modelo</th>
-                                    <th>Ano</th>
-                                    <th>KM</th>
-                                    <th>Unidade</th>
-                                    <th>Status</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="viaturasTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Ordens de Serviço Page -->
-                <div id="ordens" class="page">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h1 style="font-size: 28px; font-weight: 700;">Ordens de Serviço</h1>
-                        <button onclick="openNovaOrdemModal()"><i class="fas fa-plus"></i> Nova Ordem</button>
-                    </div>
-
-                    <div class="card">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Número</th>
-                                    <th>Viatura</th>
-                                    <th>Data</th>
-                                    <th>Responsável</th>
-                                    <th>Problema</th>
-                                    <th>Custo</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ordensTable"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Histórico Page -->
-                <div id="historico" class="page">
-                    <h1 style="margin-bottom: 30px; font-size: 28px; font-weight: 700;">Histórico de Manutenção</h1>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
-                        <div class="card">
-                            <div style="font-size: 14px; color: #666; margin-bottom: 10px; font-weight: 600;">CUSTO TOTAL</div>
-                            <div style="font-size: 32px; font-weight: 700; color: #1B4F72; margin-bottom: 5px;" id="custTotal">R$ 0,00</div>
-                            <div style="font-size: 12px; color: #999;">Em manutenções</div>
-                        </div>
-                        <div class="card">
-                            <div style="font-size: 14px; color: #666; margin-bottom: 10px; font-weight: 600;">TEMPO DE PARADA</div>
-                            <div style="font-size: 32px; font-weight: 700; color: #F39C12; margin-bottom: 5px;" id="tempoTotal">0 h</div>
-                            <div style="font-size: 12px; color: #999;">Horas indisponíveis</div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="timeline" id="timelineContainer"></div>
-                    </div>
-                </div>
-
-                <!-- Rastreamento Page -->
-                <div id="rastreamento" class="page">
-                    <h1 style="margin-bottom: 20px; font-size: 28px; font-weight: 700;">Rastreamento em Tempo Real</h1>
-
-                    <div style="display: grid; grid-template-columns: 75% 1fr; gap: 20px;">
-                        <div class="card" style="padding: 0; overflow: hidden;">
-                            <div id="map"></div>
-                        </div>
-
-                        <div>
-                            <div class="card">
-                                <h4 style="margin-bottom: 10px;">Camadas do Mapa</h4>
-                                <div class="map-controls">
-                                    <button onclick="changeMapType('osm')" id="btnMapOsm" style="background-color: var(--azul-medio);">🗺️ Rua</button>
-                                    <button onclick="changeMapType('satellite')" id="btnMapSat" class="secondary">📡 Satélite</button>
-                                    <button onclick="changeMapType('terrain')" id="btnMapTerrain" class="secondary">🏔️ Terreno</button>
-                                </div>
-                            </div>
-
-                            <div class="card">
-                                <h4 style="margin-bottom: 10px;">Viaturas Online</h4>
-                                <div class="viaturas-list" id="viaturasMapList"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Indicadores Page -->
-                <div id="indicadores" class="page">
-                    <h1 style="margin-bottom: 30px; font-size: 28px; font-weight: 700;">Indicadores de Desempenho (KPIs)</h1>
-
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div style="font-size: 12px; color: #666; margin-bottom: 10px; font-weight: 600;">DISPONIBILIDADE</div>
-                            <div class="stat-card-value" style="color: var(--verde);" id="kpiDisponibilidade">92%</div>
-                            <div class="stat-card-label">Frota disponível</div>
-                        </div>
-                        <div class="stat-card">
-                            <div style="font-size: 12px; color: #666; margin-bottom: 10px; font-weight: 600;">MTTR</div>
-                            <div class="stat-card-value" style="color: var(--laranja);" id="kpiMTTR">3.2 h</div>
-                            <div class="stat-card-label">Tempo médio de reparo</div>
-                        </div>
-                        <div class="stat-card">
-                            <div style="font-size: 12px; color: #666; margin-bottom: 10px; font-weight: 600;">MTBF</div>
-                            <div class="stat-card-value" style="color: var(--azul-medio);" id="kpiMTBF">200 h</div>
-                            <div class="stat-card-label">Tempo entre falhas</div>
-                        </div>
-                        <div class="stat-card">
-                            <div style="font-size: 12px; color: #666; margin-bottom: 10px; font-weight: 600;">CUSTO/VIATURA</div>
-                            <div class="stat-card-value" style="color: var(--vermelho);" id="kpiCusto">R$ 1.2k</div>
-                            <div class="stat-card-label">Manutenção mensal</div>
-                        </div>
-                    </div>
-
-                    <div class="charts-container">
-                        <div class="card">
-                            <h3>Disponibilidade da Frota (%)</h3>
-                            <canvas id="chartDisponibilidade"></canvas>
-                        </div>
-                        <div class="card">
-                            <h3>Tipos de Falhas</h3>
-                            <canvas id="chartFalhas"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
+<div id="app" class="container">
+<aside class="sidebar">
+  <div class="sidebar-logo"><i class="fas fa-shield-alt"></i><span>Frota PM</span></div>
+  <ul class="sidebar-menu">
+    <li><a href="#" onclick="showPage('dashboard')" class="menu-link active" data-page="dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
+    <li><a href="#" onclick="showPage('viaturas')" class="menu-link" data-page="viaturas"><i class="fas fa-car"></i><span>Viaturas</span></a></li>
+    <li><a href="#" onclick="showPage('ordens')" class="menu-link" data-page="ordens"><i class="fas fa-list"></i><span>Ordens de Serviço</span></a></li>
+    <li><a href="#" onclick="showPage('historico')" class="menu-link" data-page="historico"><i class="fas fa-history"></i><span>Histórico</span></a></li>
+    <li><a href="#" onclick="showPage('rastreamento')" class="menu-link" data-page="rastreamento"><i class="fas fa-map-marker-alt"></i><span>Rastreamento</span></a></li>
+    <li><a href="#" onclick="showPage('indicadores')" class="menu-link" data-page="indicadores"><i class="fas fa-chart-bar"></i><span>Indicadores</span></a></li>
+  </ul>
+  <div class="sidebar-profile">
+    <div class="profile-user">
+      <div class="profile-avatar">RC</div>
+      <div class="profile-info"><strong>Rayane Cruz</strong><small>Administrador</small></div>
     </div>
+  </div>
+</aside>
 
-    <!-- Modal Nova Viatura -->
-    <div id="modalNovaViatura" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Adicionar Nova Viatura</h3>
-                <button class="modal-close" onclick="closeModal('modalNovaViatura')">×</button>
-            </div>
-            <form onsubmit="adicionarViatura(event)">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Número da Viatura</label>
-                        <input type="text" id="novaViaturaNumero" placeholder="PM-001" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Placa</label>
-                        <input type="text" id="novaViaturaPlaca" placeholder="ABC1234" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Modelo</label>
-                        <input type="text" id="novaViaturaModelo" placeholder="Toyota Hilux" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Ano</label>
-                        <input type="number" id="novaViaturaAno" value="2024" required>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Quilometragem</label>
-                        <input type="number" id="novaViaturaKM" value="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Unidade</label>
-                        <input type="text" id="novaViaturaUnidade" placeholder="ROTAM" required>
-                    </div>
-                </div>
-                <div class="btn-group">
-                    <button type="submit" style="flex: 1;">Salvar Viatura</button>
-                    <button type="button" class="secondary" style="flex: 1;" onclick="closeModal('modalNovaViatura')">Cancelar</button>
-                </div>
-            </form>
+<main class="main-wrapper">
+<nav class="navbar">
+  <h1 style="font-size:22px;font-weight:700;margin:0;">Frota PM - Blumenau</h1>
+  <div class="navbar-search"><input type="text" placeholder="🔍 Pesquisar viaturas por placa/número..." id="searchInput"></div>
+  <div class="navbar-icons"><i class="fas fa-bell" title="Alertas"></i><i class="fas fa-cog" title="Configurações"></i></div>
+</nav>
+
+<div class="main-content">
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="page active">
+    <h1 style="margin-bottom:30px;font-size:28px;font-weight:700;">Dashboard</h1>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-card-value" id="dashTotal">0</div><div class="stat-card-label">Total de Viaturas</div></div>
+      <div class="stat-card success"><div class="stat-card-value" id="dashOp">0</div><div class="stat-card-label">Em Operação</div></div>
+      <div class="stat-card warning"><div class="stat-card-value" id="dashMan">0</div><div class="stat-card-label">Em Manutenção</div></div>
+      <div class="stat-card danger"><div class="stat-card-value" id="dashInd">0</div><div class="stat-card-label">Indisponível</div></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-card-value" id="dashOsAbertas">0</div><div class="stat-card-label">OS Abertas</div></div>
+      <div class="stat-card success"><div class="stat-card-value" id="dashOsConc">0</div><div class="stat-card-label">OS Concluídas</div></div>
+      <div class="stat-card warning"><div class="stat-card-value" id="dashCusto">R$ 0,00</div><div class="stat-card-label">Custo Total Manutenção</div></div>
+      <div class="stat-card"><div class="stat-card-value" id="dashDisp">0%</div><div class="stat-card-label">Disponibilidade</div></div>
+    </div>
+    <div class="charts-container">
+      <div class="card"><h3>Manutenções por Mês</h3><canvas id="chartManutencoes"></canvas></div>
+      <div class="card"><h3>Status das Viaturas</h3><canvas id="chartStatus"></canvas></div>
+    </div>
+    <div class="card" style="margin-top:20px;">
+      <h3 style="margin-bottom:15px;">Alertas Importantes</h3>
+      <div id="alertasContainer"></div>
+    </div>
+  </div>
+
+  <!-- VIATURAS -->
+  <div id="viaturas" class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <h1 style="font-size:28px;font-weight:700;">Cadastro de Viaturas</h1>
+      <button onclick="openViaturaModal()"><i class="fas fa-plus"></i> Nova Viatura</button>
+    </div>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="filters">
+        <input type="text" placeholder="🔍 Placa, número, modelo..." id="viaturaFilter">
+        <select id="viaturaStatusFilter">
+          <option value="">Todos os Status</option>
+          <option>Operacional</option><option>Em Manutenção</option><option>Indisponível</option>
+        </select>
+        <input type="text" placeholder="Unidade/Lotação" id="viaturaUnidadeFilter">
+      </div>
+    </div>
+    <div class="card" style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Número</th><th>Placa</th><th>Modelo</th><th>Tipo</th><th>Ano</th><th>KM</th><th>Unidade</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="viaturasTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ORDENS -->
+  <div id="ordens" class="page">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <h1 style="font-size:28px;font-weight:700;">Ordens de Serviço</h1>
+      <button onclick="openOrdemModal()"><i class="fas fa-plus"></i> Nova Ordem</button>
+    </div>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="filters">
+        <input type="text" placeholder="🔍 Número, viatura, responsável..." id="ordemFilter">
+        <select id="ordemStatusFilter">
+          <option value="">Todos os Status</option>
+          <option>Agendada</option><option>Em andamento</option><option>Concluída</option><option>Cancelada</option>
+        </select>
+        <select id="ordemTipoFilter">
+          <option value="">Todos os Tipos</option>
+          <option>Preventiva</option><option>Corretiva</option>
+        </select>
+      </div>
+    </div>
+    <div class="card" style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Número</th><th>Viatura</th><th>Placa</th><th>Tipo</th><th>Data</th><th>Responsável</th><th>Custo</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="ordensTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div id="historico" class="page">
+    <h1 style="margin-bottom:30px;font-size:28px;font-weight:700;">Histórico de Manutenção</h1>
+    <div class="stats-grid">
+      <div class="stat-card"><div style="font-size:12px;color:#666;font-weight:600;">CUSTO TOTAL</div><div class="stat-card-value" id="histCusto">R$ 0,00</div><div class="stat-card-label">Em manutenções concluídas</div></div>
+      <div class="stat-card warning"><div style="font-size:12px;color:#666;font-weight:600;">TEMPO TOTAL DE PARADA</div><div class="stat-card-value" id="histTempo">0 h</div><div class="stat-card-label">Horas indisponíveis</div></div>
+      <div class="stat-card success"><div style="font-size:12px;color:#666;font-weight:600;">TOTAL DE MANUTENÇÕES</div><div class="stat-card-value" id="histTotal">0</div><div class="stat-card-label">Ordens concluídas</div></div>
+    </div>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="filters">
+        <input type="text" placeholder="🔍 Buscar..." id="histFilter">
+        <select id="histViaturaFilter"><option value="">Todas as Viaturas</option></select>
+        <select id="histTipoFilter"><option value="">Todos os Tipos</option><option>Preventiva</option><option>Corretiva</option></select>
+        <input type="text" placeholder="Responsável" id="histRespFilter">
+        <input type="date" id="histDataIni">
+        <input type="date" id="histDataFim">
+      </div>
+    </div>
+    <div class="card"><div class="timeline" id="timelineContainer"></div></div>
+  </div>
+
+  <!-- RASTREAMENTO -->
+  <div id="rastreamento" class="page">
+    <h1 style="margin-bottom:20px;font-size:28px;font-weight:700;">Rastreamento</h1>
+    <div class="alert info" style="margin-bottom:20px;">
+      <strong>ℹ️ Modo de visualização</strong>
+      <p>Este sistema não possui integração real com GPS. As viaturas exibidas no mapa são aquelas que possuem coordenadas cadastradas manualmente. Nenhuma localização é simulada em tempo real.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;" id="mapGrid">
+      <div class="card" style="padding:0;overflow:hidden;"><div id="map"></div></div>
+      <div>
+        <div class="card">
+          <h4 style="margin-bottom:10px;">Camadas do Mapa</h4>
+          <div class="map-controls">
+            <button onclick="changeMapType('osm')" id="btnMapOsm" class="secondary">🗺️ Rua</button>
+            <button onclick="changeMapType('satellite')" id="btnMapSat" class="secondary">📡 Satélite</button>
+            <button onclick="changeMapType('terrain')" id="btnMapTerrain" class="secondary">🏔️ Terreno</button>
+          </div>
         </div>
-    </div>
-
-    <!-- Modal Nova Ordem -->
-    <div id="modalNovaOrdem" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Nova Ordem de Serviço</h3>
-                <button class="modal-close" onclick="closeModal('modalNovaOrdem')">×</button>
-            </div>
-            <form onsubmit="adicionarOrdem(event)">
-                <div class="form-group">
-                    <label>Viatura</label>
-                    <select id="novaOrdemViatura" required></select>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Data</label>
-                        <input type="date" id="novaOrdemData" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Responsável</label>
-                        <input type="text" id="novaOrdemResponsavel" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Problema Identificado</label>
-                    <textarea id="novaOrdemProblema" required></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Serviço Executado</label>
-                    <textarea id="novaOrdemServico"></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Custo (R$)</label>
-                        <input type="number" id="novaOrdemCusto" step="0.01" value="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Tempo de Parada (horas)</label>
-                        <input type="number" id="novaOrdemTempo" step="0.5" value="0" required>
-                    </div>
-                </div>
-                <div class="btn-group">
-                    <button type="submit" style="flex: 1;">Salvar Ordem</button>
-                    <button type="button" class="secondary" style="flex: 1;" onclick="closeModal('modalNovaOrdem')">Cancelar</button>
-                </div>
-            </form>
+        <div class="card">
+          <h4 style="margin-bottom:10px;">Viaturas</h4>
+          <div class="viaturas-list" id="viaturasMapList"></div>
         </div>
+      </div>
     </div>
+  </div>
 
-    <script>
-        // Dados em localStorage
-        const DB_KEY = 'frotapm_db';
+  <!-- INDICADORES -->
+  <div id="indicadores" class="page">
+    <h1 style="margin-bottom:30px;font-size:28px;font-weight:700;">Indicadores de Desempenho (KPIs)</h1>
+    <div class="stats-grid">
+      <div class="stat-card"><div style="font-size:12px;color:#666;font-weight:600;">DISPONIBILIDADE</div><div class="stat-card-value" style="color:var(--verde);" id="kpiDisp">0%</div><div class="stat-card-label">Frota disponível</div></div>
+      <div class="stat-card"><div style="font-size:12px;color:#666;font-weight:600;">MTTR</div><div class="stat-card-value" style="color:var(--laranja);" id="kpiMttr">0 h</div><div class="stat-card-label">Tempo médio de reparo</div></div>
+      <div class="stat-card"><div style="font-size:12px;color:#666;font-weight:600;">MTBF</div><div class="stat-card-value" style="color:var(--azul-medio);" id="kpiMtbf">0 d</div><div class="stat-card-label">Tempo médio entre falhas</div></div>
+      <div class="stat-card"><div style="font-size:12px;color:#666;font-weight:600;">CUSTO/VIATURA</div><div class="stat-card-value" style="color:var(--vermelho);" id="kpiCustoMedio">R$ 0,00</div><div class="stat-card-label">Custo médio por viatura</div></div>
+    </div>
+    <div class="charts-container">
+      <div class="card"><h3>Disponibilidade da Frota (%)</h3><canvas id="chartDisponibilidade"></canvas></div>
+      <div class="card"><h3>Tipos de Falhas</h3><canvas id="chartFalhas"></canvas></div>
+    </div>
+    <div class="card" style="margin-top:20px;">
+      <h3 style="margin-bottom:15px;">Custos de Manutenção (últimos 6 meses)</h3>
+      <canvas id="chartCustos"></canvas>
+    </div>
+  </div>
+</div>
+</main>
+</div>
 
-        const defaultData = {
-            viaturas: [
-                { id: 1, numero: 'PM-001', placa: 'ABC1234', modelo: 'Toyota Hilux', ano: 2022, quilometragem: 45000, unidade: 'ROTAM', status: 'Em operação', ultimaRevisao: '2024-06-15', proximaRevisao: '2024-07-15' },
-                { id: 2, numero: 'PM-002', placa: 'DEF5678', modelo: 'Ford Ranger', ano: 2021, quilometragem: 62000, unidade: 'RADU', status: 'Em manutenção', ultimaRevisao: '2024-05-20', proximaRevisao: '2024-07-20' },
-                { id: 3, numero: 'PM-003', placa: 'GHI9012', modelo: 'Chevrolet S10', ano: 2023, quilometragem: 12000, unidade: 'ROTAM', status: 'Em operação', ultimaRevisao: '2024-06-10', proximaRevisao: '2024-08-10' },
-                { id: 4, numero: 'PM-004', placa: 'JKL3456', modelo: 'Honda CRV', ano: 2020, quilometragem: 85000, unidade: 'COMANDO', status: 'Indisponível', ultimaRevisao: '2024-04-01', proximaRevisao: '2024-07-01' },
-                { id: 5, numero: 'PM-005', placa: 'MNO7890', modelo: 'Volkswagen Amarok', ano: 2022, quilometragem: 55000, unidade: 'RADU', status: 'Em operação', ultimaRevisao: '2024-06-01', proximaRevisao: '2024-07-01' }
-            ],
-            ordensServico: [
-                { id: 1, numero: 'OS-001', viaturaId: 1, data: '2024-06-15', problemaIdentificado: 'Freios desgastados', servicoExecutado: 'Troca de pastilhas de freio', responsavel: 'João Silva', custo: 350, tempoParada: 4, status: 'Finalizada' },
-                { id: 2, numero: 'OS-002', viaturaId: 2, data: '2024-06-10', problemaIdentificado: 'Troca de óleo', servicoExecutado: 'Troca de óleo e filtro', responsavel: 'Maria Santos', custo: 150, tempoParada: 1.5, status: 'Finalizada' },
-                { id: 3, numero: 'OS-003', viaturaId: 3, data: '2024-06-12', problemaIdentificado: 'Alinhamento necessário', servicoExecutado: 'Alinhamento e balanceamento', responsavel: 'Carlos Oliveira', custo: 200, tempoParada: 2, status: 'Finalizada' }
-            ]
-        };
+<!-- MODAL VIATURA -->
+<div id="modalViatura" class="modal">
+  <div class="modal-content">
+    <div class="modal-header"><h3 id="modalViaturaTitle">Nova Viatura</h3><button class="modal-close" onclick="closeModal('modalViatura')">×</button></div>
+    <form onsubmit="salvarViatura(event)">
+      <input type="hidden" id="viaturaId">
+      <div class="form-row">
+        <div class="form-group"><label>Número da Viatura *</label><input type="text" id="vNumero" placeholder="PM-001" required></div>
+        <div class="form-group"><label>Placa *</label><input type="text" id="vPlaca" placeholder="ABC1234" required></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Modelo *</label><input type="text" id="vModelo" placeholder="Toyota Hilux" required></div>
+        <div class="form-group"><label>Ano *</label><input type="number" id="vAno" min="1980" max="2100" value="2024" required></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Tipo</label>
+          <select id="vTipo">
+            <option>Viatura Operacional</option><option>Viatura Administrativa</option>
+            <option>Moto</option><option>Caminhonete</option><option>Van</option><option>Ônibus</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Quilometragem Atual *</label><input type="number" id="vKm" min="0" value="0" required></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Status *</label>
+          <select id="vStatus" required><option>Operacional</option><option>Em Manutenção</option><option>Indisponível</option></select>
+        </div>
+        <div class="form-group"><label>Unidade / Lotação *</label><input type="text" id="vUnidade" placeholder="ROTAM" required></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Próxima Manutenção (KM)</label><input type="number" id="vProxKm" min="0" placeholder="Ex: 50000"></div>
+        <div class="form-group"><label>Próxima Manutenção (Data)</label><input type="date" id="vProxData"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Latitude (opcional)</label><input type="number" step="0.000001" id="vLat" placeholder="-26.9124"></div>
+        <div class="form-group"><label>Longitude (opcional)</label><input type="number" step="0.000001" id="vLng" placeholder="-49.0655"></div>
+      </div>
+      <div class="form-group"><label>Observações</label><textarea id="vObs"></textarea></div>
+      <div class="btn-group">
+        <button type="submit" style="flex:1;">Salvar</button>
+        <button type="button" class="secondary" style="flex:1;" onclick="closeModal('modalViatura')">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-        function getDB() {
-            const db = localStorage.getItem(DB_KEY);
-            return db ? JSON.parse(db) : defaultData;
-        }
+<!-- MODAL ORDEM -->
+<div id="modalOrdem" class="modal">
+  <div class="modal-content">
+    <div class="modal-header"><h3 id="modalOrdemTitle">Nova Ordem de Serviço</h3><button class="modal-close" onclick="closeModal('modalOrdem')">×</button></div>
+    <form onsubmit="salvarOrdem(event)">
+      <input type="hidden" id="ordemId">
+      <div class="form-row">
+        <div class="form-group"><label>Viatura *</label><select id="oViatura" required onchange="preencherPlacaOrdem()"></select></div>
+        <div class="form-group"><label>Placa</label><input type="text" id="oPlaca" readonly style="background:#f0f0f0;"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Tipo de Manutenção *</label>
+          <select id="oTipo" required><option>Preventiva</option><option>Corretiva</option></select>
+        </div>
+        <div class="form-group"><label>Data *</label><input type="date" id="oData" required></div>
+      </div>
+      <div class="form-group"><label>Descrição / Problema Identificado *</label><textarea id="oDescricao" required></textarea></div>
+      <div class="form-group"><label>Peças Trocadas (separar por vírgula)</label><input type="text" id="oPecas" placeholder="Pastilha de freio, Óleo SAE 40"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Quilometragem</label><input type="number" id="oKm" min="0" value="0"></div>
+        <div class="form-group"><label>Responsável *</label><input type="text" id="oResponsavel" required></div>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group"><label>Custo (R$)</label><input type="number" id="oCusto" step="0.01" min="0" value="0"></div>
+        <div class="form-group"><label>Tempo Parada (h)</label><input type="number" id="oTempo" step="0.5" min="0" value="0"></div>
+        <div class="form-group"><label>Status *</label>
+          <select id="oStatus" required><option>Agendada</option><option>Em andamento</option><option>Concluída</option><option>Cancelada</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Observações</label><textarea id="oObs"></textarea></div>
+      <div class="btn-group">
+        <button type="submit" style="flex:1;">Salvar</button>
+        <button type="button" class="secondary" style="flex:1;" onclick="closeModal('modalOrdem')">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-        function saveDB(db) {
-            localStorage.setItem(DB_KEY, JSON.stringify(db));
-        }
+<!-- MODAL CONFIRMAÇÃO -->
+<div id="modalConfirm" class="modal">
+  <div class="modal-content" style="max-width:400px;">
+    <div class="modal-header"><h3>Confirmação</h3></div>
+    <p id="confirmMsg" style="margin-bottom:20px;"></p>
+    <div class="btn-group">
+      <button class="danger" style="flex:1;" id="confirmOkBtn">Confirmar</button>
+      <button class="secondary" style="flex:1;" onclick="closeModal('modalConfirm')">Cancelar</button>
+    </div>
+  </div>
+</div>
 
-        function initDB() {
-            if (!localStorage.getItem(DB_KEY)) {
-                saveDB(defaultData);
-            }
-        }
+<div id="toast-container"></div>
 
-        // Funções da Interface
-        function showPage(pageId) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
+<script>
+/* ============================================================
+   CAMADA DE DADOS ÚNICA (fonte de verdade para todo o sistema)
+   ============================================================ */
+const DB_KEY = 'frotapm_db';
+const DB_VERSION = 2;
 
-            document.querySelectorAll('.menu-link').forEach(a => a.classList.remove('active'));
-            document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+const DEFAULT_DATA = {
+  version: DB_VERSION,
+  viaturas: [],
+  ordensServico: []
+};
 
-            if (pageId === 'dashboard') updateDashboard();
-            if (pageId === 'rastreamento') initMap();
-        }
+function migrateDB(db){
+  // Migração v1 → v2: normaliza status e adiciona campos
+  if(!db.version || db.version < 2){
+    (db.viaturas||[]).forEach(v=>{
+      // Padroniza status
+      if(v.status === 'Em operação') v.status = 'Operacional';
+      if(!v.tipo) v.tipo = 'Viatura Operacional';
+      if(!v.observacoes) v.observacoes = '';
+      if(typeof v.latitude === 'undefined') v.latitude = null;
+      if(typeof v.longitude === 'undefined') v.longitude = null;
+    });
+    (db.ordensServico||[]).forEach(o=>{
+      if(!o.tipo) o.tipo = 'Corretiva';
+      if(!o.status) o.status = 'Concluída';
+      if(o.status === 'Finalizada') o.status = 'Concluída';
+      if(!o.pecas) o.pecas = [];
+      if(!o.quilometragem) o.quilometragem = 0;
+      if(!o.observacoes) o.observacoes = '';
+    });
+    db.version = DB_VERSION;
+  }
+  return db;
+}
 
-        function openModal(modalId) {
-            document.getElementById(modalId).classList.add('active');
-        }
+const Store = {
+  read(){
+    try{
+      const raw = localStorage.getItem(DB_KEY);
+      if(!raw) return null;
+      return migrateDB(JSON.parse(raw));
+    }catch(e){
+      console.error('Erro ao ler DB:', e);
+      return null;
+    }
+  },
+  write(db){
+    try{
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+      window.dispatchEvent(new Event('frota:update'));
+    }catch(e){ console.error('Erro ao salvar DB:', e); }
+  },
+  init(){
+    let db = this.read();
+    if(!db){
+      db = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      this.write(db);
+    } else if(db.version !== DB_VERSION){
+      this.write(db); // persistir migração
+    }
+  },
+  getAll(){ return this.read() || JSON.parse(JSON.stringify(DEFAULT_DATA)); },
+  // VIATURAS
+  listarViaturas(){ return this.getAll().viaturas; },
+  getViatura(id){ return this.listarViaturas().find(v => v.id === id); },
+  salvarViatura(v){
+    const db = this.getAll();
+    if(!v.id){
+      v.id = db.viaturas.length ? Math.max(...db.viaturas.map(x=>x.id)) + 1 : 1;
+      db.viaturas.push(v);
+    } else {
+      const i = db.viaturas.findIndex(x => x.id === v.id);
+      if(i >= 0) db.viaturas[i] = { ...db.viaturas[i], ...v };
+    }
+    this.write(db);
+    return v;
+  },
+  excluirViatura(id){
+    const db = this.getAll();
+    db.viaturas = db.viaturas.filter(v => v.id !== id);
+    // Ordens relacionadas: mantém histórico mas marca viatura órfã? Aqui removemos em cascata com aviso prévio.
+    db.ordensServico = db.ordensServico.filter(o => o.viaturaId !== id);
+    this.write(db);
+  },
+  // ORDENS
+  listarOrdens(){ return this.getAll().ordensServico; },
+  getOrdem(id){ return this.listarOrdens().find(o => o.id === id); },
+  salvarOrdem(o){
+    const db = this.getAll();
+    if(!o.id){
+      o.id = db.ordensServico.length ? Math.max(...db.ordensServico.map(x=>x.id)) + 1 : 1;
+      o.numero = `OS-${String(o.id).padStart(3,'0')}`;
+      db.ordensServico.push(o);
+    } else {
+      const i = db.ordensServico.findIndex(x => x.id === o.id);
+      if(i >= 0) db.ordensServico[i] = { ...db.ordensServico[i], ...o };
+    }
+    this.write(db);
+    return o;
+  },
+  excluirOrdem(id){
+    const db = this.getAll();
+    db.ordensServico = db.ordensServico.filter(o => o.id !== id);
+    this.write(db);
+  }
+};
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.remove('active');
-        }
+/* ============================================================
+   UTILITÁRIOS
+   ============================================================ */
+function esc(s){
+  if(s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function fmtMoeda(v){ return 'R$ ' + (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtNum(v){ return (Number(v)||0).toLocaleString('pt-BR'); }
+function fmtData(s){ if(!s) return '-'; const d = new Date(s + (s.length===10?'T00:00:00':'')); return isNaN(d) ? '-' : d.toLocaleDateString('pt-BR'); }
+function todayISO(){ return new Date().toISOString().split('T')[0]; }
+function statusBadge(s){
+  const map = { 'Operacional':'success', 'Em Manutenção':'warning', 'Indisponível':'danger',
+                'Agendada':'info', 'Em andamento':'warning', 'Concluída':'success', 'Cancelada':'danger',
+                'Preventiva':'info', 'Corretiva':'warning' };
+  return `<span class="badge ${map[s]||'info'}">${esc(s)}</span>`;
+}
+function toast(msg, type='success'){
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+function confirmar(msg, onOk){
+  document.getElementById('confirmMsg').textContent = msg;
+  const btn = document.getElementById('confirmOkBtn');
+  const fresh = btn.cloneNode(true);
+  btn.parentNode.replaceChild(fresh, btn);
+  fresh.addEventListener('click', ()=>{ closeModal('modalConfirm'); onOk(); });
+  openModal('modalConfirm');
+}
 
-        function openNovaViaturaModal() {
-            openModal('modalNovaViatura');
-        }
+/* ============================================================
+   CÁLCULOS (KPIs derivados — usados por Dashboard, Indicadores, Gráficos)
+   ============================================================ */
+function calcularKPIs(db){
+  db = db || Store.getAll();
+  const viaturas = db.viaturas;
+  const ordens = db.ordensServico;
+  const emOp = viaturas.filter(v=>v.status==='Operacional').length;
+  const emMan = viaturas.filter(v=>v.status==='Em Manutenção').length;
+  const indisp = viaturas.filter(v=>v.status==='Indisponível').length;
+  const total = viaturas.length;
+  const osAbertas = ordens.filter(o=>['Agendada','Em andamento'].includes(o.status)).length;
+  const osConcluidas = ordens.filter(o=>o.status==='Concluída');
+  const custoTotal = osConcluidas.reduce((s,o)=>s + (Number(o.custo)||0), 0);
+  const disponibilidade = total ? (emOp / total) * 100 : 0;
+  // MTTR = média do tempo de parada (horas) das corretivas concluídas
+  const corretivas = osConcluidas.filter(o=>o.tipo==='Corretiva');
+  const mttr = corretivas.length ? corretivas.reduce((s,o)=>s+(Number(o.tempoParada)||0),0) / corretivas.length : 0;
+  // MTBF = média de dias entre corretivas (ordena por data)
+  let mtbf = 0;
+  if(corretivas.length >= 2){
+    const ordenadas = [...corretivas].sort((a,b)=> new Date(a.data) - new Date(b.data));
+    let soma = 0;
+    for(let i=1;i<ordenadas.length;i++){
+      soma += (new Date(ordenadas[i].data) - new Date(ordenadas[i-1].data)) / (1000*60*60*24);
+    }
+    mtbf = soma / (ordenadas.length - 1);
+  }
+  const custoMedio = total ? custoTotal / total : 0;
+  return { total, emOp, emMan, indisp, osAbertas, osConcluidas: osConcluidas.length,
+           custoTotal, disponibilidade, mttr, mtbf, custoMedio };
+}
 
-        function openNovaOrdemModal() {
-            const db = getDB();
-            const select = document.getElementById('novaOrdemViatura');
-            select.innerHTML = db.viaturas.map(v => `<option value="${v.id}">${v.numero} - ${v.placa}</option>`).join('');
-            document.getElementById('novaOrdemData').valueAsDate = new Date();
-            openModal('modalNovaOrdem');
-        }
+/* Agrupa ordens concluídas por mês (últimos N meses) */
+function ordensPorMes(ordens, meses=6){
+  const agora = new Date();
+  const resultado = [];
+  for(let i = meses-1; i >= 0; i--){
+    const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    const label = d.toLocaleDateString('pt-BR',{month:'short'}).replace('.','');
+    const ini = new Date(d.getFullYear(), d.getMonth(), 1);
+    const fim = new Date(d.getFullYear(), d.getMonth()+1, 0, 23,59,59);
+    const doMes = ordens.filter(o=>{
+      const od = new Date(o.data + (o.data.length===10?'T00:00:00':''));
+      return od >= ini && od <= fim;
+    });
+    resultado.push({
+      label,
+      total: doMes.length,
+      custo: doMes.reduce((s,o)=>s+(Number(o.custo)||0),0)
+    });
+  }
+  return resultado;
+}
 
-        function adicionarViatura(e) {
-            e.preventDefault();
-            const db = getDB();
-            const novaViatura = {
-                id: Math.max(...db.viaturas.map(v => v.id), 0) + 1,
-                numero: document.getElementById('novaViaturaNumero').value,
-                placa: document.getElementById('novaViaturaPlaca').value,
-                modelo: document.getElementById('novaViaturaModelo').value,
-                ano: parseInt(document.getElementById('novaViaturaAno').value),
-                quilometragem: parseInt(document.getElementById('novaViaturaKM').value),
-                unidade: document.getElementById('novaViaturaUnidade').value,
-                status: 'Em operação',
-                ultimaRevisao: new Date().toISOString().split('T')[0],
-                proximaRevisao: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
-            };
-            db.viaturas.push(novaViatura);
-            saveDB(db);
-            closeModal('modalNovaViatura');
-            alert('Viatura adicionada com sucesso!');
-            renderViaturas();
-            updateDashboard();
-        }
+/* Extrai categorias de falha a partir da descrição */
+function categorizarFalha(texto){
+  const t = (texto||'').toLowerCase();
+  if(/motor|óleo|oleo|ignição|ignicao/.test(t)) return 'Motor';
+  if(/freio|pastilha|disco/.test(t)) return 'Freios';
+  if(/suspens|amortec|mola/.test(t)) return 'Suspensão';
+  if(/elétric|eletric|bateria|farol|luz/.test(t)) return 'Elétrico';
+  if(/pneu|alinhamento|balanceamento|roda/.test(t)) return 'Pneus/Geometria';
+  return 'Outros';
+}
 
-        function adicionarOrdem(e) {
-            e.preventDefault();
-            const db = getDB();
-            const novaOrdem = {
-                id: Math.max(...db.ordensServico.map(o => o.id), 0) + 1,
-                numero: `OS-${Date.now().toString().slice(-6)}`,
-                viaturaId: parseInt(document.getElementById('novaOrdemViatura').value),
-                data: document.getElementById('novaOrdemData').value,
-                problemaIdentificado: document.getElementById('novaOrdemProblema').value,
-                servicoExecutado: document.getElementById('novaOrdemServico').value,
-                responsavel: document.getElementById('novaOrdemResponsavel').value,
-                custo: parseFloat(document.getElementById('novaOrdemCusto').value),
-                tempoParada: parseFloat(document.getElementById('novaOrdemTempo').value),
-                status: 'Aberta'
-            };
-            db.ordensServico.push(novaOrdem);
-            saveDB(db);
-            closeModal('modalNovaOrdem');
-            alert('Ordem de serviço criada com sucesso!');
-            renderOrdens();
-            updateDashboard();
-        }
+/* ============================================================
+   NAVEGAÇÃO
+   ============================================================ */
+function showPage(pageId){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const el = document.getElementById(pageId);
+  if(el) el.classList.add('active');
+  document.querySelectorAll('.menu-link').forEach(a=>a.classList.remove('active'));
+  const link = document.querySelector(`[data-page="${pageId}"]`);
+  if(link) link.classList.add('active');
 
-        function renderViaturas() {
-            const db = getDB();
-            const filtro = document.getElementById('viaturaFilter').value.toLowerCase();
-            const viaturasFiltradas = db.viaturas.filter(v => 
-                v.numero.toLowerCase().includes(filtro) || 
-                v.placa.toLowerCase().includes(filtro)
-            );
+  if(pageId === 'dashboard') renderDashboard();
+  if(pageId === 'viaturas') renderViaturas();
+  if(pageId === 'ordens') renderOrdens();
+  if(pageId === 'historico') renderHistorico();
+  if(pageId === 'indicadores') renderIndicadores();
+  if(pageId === 'rastreamento'){ initMap(); renderMapList(); }
+}
 
-            const tbody = document.getElementById('viaturasTable');
-            tbody.innerHTML = viaturasFiltradas.map(v => `
-                <tr>
-                    <td><strong>${v.numero}</strong></td>
-                    <td>${v.placa}</td>
-                    <td>${v.modelo}</td>
-                    <td>${v.ano}</td>
-                    <td>${v.quilometragem} km</td>
-                    <td>${v.unidade}</td>
-                    <td><span class="badge ${v.status === 'Em operação' ? 'success' : v.status === 'Em manutenção' ? 'warning' : 'danger'}">${v.status}</span></td>
-                    <td>
-                        <button class="secondary" style="padding: 5px 10px; font-size: 12px;">✏️ Editar</button>
-                        <button class="secondary" style="padding: 5px 10px; font-size: 12px; margin-left: 5px;">🗑️ Deletar</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 
-        function renderOrdens() {
-            const db = getDB();
-            const tbody = document.getElementById('ordensTable');
-            tbody.innerHTML = db.ordensServico.map(o => {
-                const viatura = db.viaturas.find(v => v.id === o.viaturaId);
-                return `
-                    <tr>
-                        <td><strong>${o.numero}</strong></td>
-                        <td>${viatura ? viatura.numero : '-'}</td>
-                        <td>${new Date(o.data).toLocaleDateString('pt-BR')}</td>
-                        <td>${o.responsavel}</td>
-                        <td>${o.problemaIdentificado.substring(0, 20)}...</td>
-                        <td>R$ ${o.custo.toFixed(2)}</td>
-                        <td><span style="display: inline-block; background-color: ${o.status === 'Finalizada' ? '#e8f8f5' : o.status === 'Em execução' ? '#fef5e7' : '#e3f2fd'}; color: ${o.status === 'Finalizada' ? '#27ae60' : o.status === 'Em execução' ? '#e67e22' : '#1976d2'}; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;">${o.status}</span></td>
-                    </tr>
-                `;
-            }).join('');
-        }
+/* ============================================================
+   VIATURAS
+   ============================================================ */
+function openViaturaModal(id){
+  const form = document.querySelector('#modalViatura form');
+  form.reset();
+  document.getElementById('viaturaId').value = '';
+  document.getElementById('modalViaturaTitle').textContent = 'Nova Viatura';
+  if(id){
+    const v = Store.getViatura(id);
+    if(!v) return;
+    document.getElementById('modalViaturaTitle').textContent = 'Editar Viatura';
+    document.getElementById('viaturaId').value = v.id;
+    document.getElementById('vNumero').value = v.numero || '';
+    document.getElementById('vPlaca').value = v.placa || '';
+    document.getElementById('vModelo').value = v.modelo || '';
+    document.getElementById('vAno').value = v.ano || 2024;
+    document.getElementById('vTipo').value = v.tipo || 'Viatura Operacional';
+    document.getElementById('vKm').value = v.quilometragem || 0;
+    document.getElementById('vStatus').value = v.status || 'Operacional';
+    document.getElementById('vUnidade').value = v.unidade || '';
+    document.getElementById('vProxKm').value = v.proximaManutencaoKm || '';
+    document.getElementById('vProxData').value = v.proximaManutencaoData || '';
+    document.getElementById('vLat').value = v.latitude ?? '';
+    document.getElementById('vLng').value = v.longitude ?? '';
+    document.getElementById('vObs').value = v.observacoes || '';
+  }
+  openModal('modalViatura');
+}
 
-        function renderHistorico() {
-            const db = getDB();
-            const container = document.getElementById('timelineContainer');
-            container.innerHTML = db.ordensServico.map(o => `
-                <div class="timeline-item card">
-                    <strong>${o.problemaIdentificado}</strong>
-                    <small style="color: #999;">${new Date(o.data).toLocaleDateString('pt-BR')}</small>
-                    <div style="margin-top: 10px; display: flex; justify-content: space-between;">
-                        <div>R$ ${o.custo.toFixed(2)}</div>
-                        <div>${o.tempoParada}h parada</div>
-                    </div>
-                </div>
-            `).join('');
+function salvarViatura(e){
+  e.preventDefault();
+  const id = document.getElementById('viaturaId').value;
+  const placa = document.getElementById('vPlaca').value.trim().toUpperCase();
+  const numero = document.getElementById('vNumero').value.trim().toUpperCase();
+  const ano = parseInt(document.getElementById('vAno').value);
+  const km = parseInt(document.getElementById('vKm').value);
 
-            const custoTotal = db.ordensServico.reduce((a, o) => a + o.custo, 0);
-            const tempoTotal = db.ordensServico.reduce((a, o) => a + o.tempoParada, 0);
-            document.getElementById('custTotal').textContent = `R$ ${custoTotal.toFixed(2)}`;
-            document.getElementById('tempoTotal').textContent = `${tempoTotal.toFixed(1)} h`;
-        }
+  // Validações
+  if(!placa){ toast('Placa é obrigatória', 'error'); return; }
+  if(!numero){ toast('Número é obrigatório', 'error'); return; }
+  if(ano < 1980 || ano > 2100){ toast('Ano inválido', 'error'); return; }
+  if(isNaN(km) || km < 0){ toast('Quilometragem inválida', 'error'); return; }
 
-        function updateDashboard() {
-            const db = getDB();
-            const total = db.viaturas.length;
-            const emOp = db.viaturas.filter(v => v.status === 'Em operação').length;
-            const emMan = db.viaturas.filter(v => v.status === 'Em manutenção').length;
-            const indis = db.viaturas.filter(v => v.status === 'Indisponível').length;
+  // Placa duplicada
+  const duplicada = Store.listarViaturas().find(v => v.placa === placa && v.id !== Number(id) && v.id !== parseInt(id));
+  if(duplicada){ toast(`Placa ${placa} já cadastrada na viatura ${duplicada.numero}`, 'error'); return; }
 
-            document.getElementById('totalViaturas').textContent = total;
-            document.getElementById('emOperacao').textContent = emOp;
-            document.getElementById('emManutencao').textContent = emMan;
-            document.getElementById('indisponivel').textContent = indis;
+  const v = {
+    id: id ? Number(id) : undefined,
+    numero, placa,
+    modelo: document.getElementById('vModelo').value.trim(),
+    ano, tipo: document.getElementById('vTipo').value,
+    quilometragem: km,
+    status: document.getElementById('vStatus').value,
+    unidade: document.getElementById('vUnidade').value.trim(),
+    proximaManutencaoKm: parseInt(document.getElementById('vProxKm').value) || null,
+    proximaManutencaoData: document.getElementById('vProxData').value || null,
+    latitude: document.getElementById('vLat').value ? parseFloat(document.getElementById('vLat').value) : null,
+    longitude: document.getElementById('vLng').value ? parseFloat(document.getElementById('vLng').value) : null,
+    observacoes: document.getElementById('vObs').value.trim()
+  };
+  if(!v.id) delete v.id;
 
-            // Alertas
-            const alertasContainer = document.getElementById('alertasContainer');
-            alertasContainer.innerHTML = `
-                <div class="alert danger">
-                    <strong>⚠️ Manutenção Vencida</strong>
-                    <p style="font-size: 12px; margin-top: 5px;">Viatura PM-004: Revisão vencida há 12 dias</p>
-                </div>
-                <div class="alert warning">
-                    <strong>⏰ Próximo Vencimento</strong>
-                    <p style="font-size: 12px; margin-top: 5px;">Viatura PM-005: Revisão em 2 dias</p>
-                </div>
-            `;
+  Store.salvarViatura(v);
+  closeModal('modalViatura');
+  toast(id ? 'Viatura atualizada com sucesso!' : 'Viatura cadastrada com sucesso!');
+  renderViaturas();
+  renderDashboard();
+}
 
-            // Gráficos
-            drawCharts();
-        }
+function excluirViatura(id){
+  const v = Store.getViatura(id);
+  if(!v) return;
+  const ordens = Store.listarOrdens().filter(o => o.viaturaId === id);
+  const msg = ordens.length
+    ? `Excluir ${v.numero} (${v.placa})? Isso também removerá ${ordens.length} ordem(ns) de serviço relacionada(s).`
+    : `Excluir ${v.numero} (${v.placa})?`;
+  confirmar(msg, () => {
+    Store.excluirViatura(id);
+    toast('Viatura excluída com sucesso!');
+    renderViaturas();
+    renderDashboard();
+    renderOrdens();
+    renderHistorico();
+  });
+}
 
-        let chartManutencoes, chartStatus, chartDisponibilidade, chartFalhas;
+function renderViaturas(){
+  const tbody = document.getElementById('viaturasTable');
+  if(!tbody) return;
+  const filtro = (document.getElementById('viaturaFilter')?.value || '').toLowerCase();
+  const stFiltro = document.getElementById('viaturaStatusFilter')?.value || '';
+  const unFiltro = (document.getElementById('viaturaUnidadeFilter')?.value || '').toLowerCase();
 
-        function drawCharts() {
-            const ctxManutencoes = document.getElementById('chartManutencoes');
-            if (ctxManutencoes) {
-                if (chartManutencoes) chartManutencoes.destroy();
-                chartManutencoes = new Chart(ctxManutencoes, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-                        datasets: [{
-                            label: 'Manutenções',
-                            data: [12, 19, 15, 22, 18, 25],
-                            backgroundColor: '#1B4F72'
-                        }]
-                    },
-                    options: { responsive: true, plugins: { legend: { display: true } } }
-                });
-            }
+  const lista = Store.listarViaturas().filter(v => {
+    if(stFiltro && v.status !== stFiltro) return false;
+    if(unFiltro && !(v.unidade||'').toLowerCase().includes(unFiltro)) return false;
+    if(filtro){
+      const s = `${v.numero} ${v.placa} ${v.modelo}`.toLowerCase();
+      if(!s.includes(filtro)) return false;
+    }
+    return true;
+  });
 
-            const ctxStatus = document.getElementById('chartStatus');
-            if (ctxStatus) {
-                if (chartStatus) chartStatus.destroy();
-                const db = getDB();
-                const emOp = db.viaturas.filter(v => v.status === 'Em operação').length;
-                const emMan = db.viaturas.filter(v => v.status === 'Em manutenção').length;
-                const indis = db.viaturas.filter(v => v.status === 'Indisponível').length;
+  if(!lista.length){
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><i class="fas fa-car"></i>Nenhuma viatura encontrada.</div></td></tr>`;
+    return;
+  }
 
-                chartStatus = new Chart(ctxStatus, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Em operação', 'Em manutenção', 'Indisponível'],
-                        datasets: [{
-                            data: [emOp, emMan, indis],
-                            backgroundColor: ['#2ECC71', '#F39C12', '#E74C3C']
-                        }]
-                    },
-                    options: { responsive: true, plugins: { legend: { display: true } } }
-                });
-            }
+  tbody.innerHTML = lista.map(v => `
+    <tr>
+      <td><strong>${esc(v.numero)}</strong></td>
+      <td>${esc(v.placa)}</td>
+      <td>${esc(v.modelo)}</td>
+      <td>${esc(v.tipo||'-')}</td>
+      <td>${esc(v.ano)}</td>
+      <td>${fmtNum(v.quilometragem)} km</td>
+      <td>${esc(v.unidade)}</td>
+      <td>${statusBadge(v.status)}</td>
+      <td><div class="actions-cell">
+        <button class="secondary btn-sm" onclick="openViaturaModal(${v.id})" title="Editar">✏️</button>
+        <button class="danger btn-sm" onclick="excluirViatura(${v.id})" title="Excluir">🗑️</button>
+      </div></td>
+    </tr>`).join('');
+}
 
-            const ctxDis = document.getElementById('chartDisponibilidade');
-            if (ctxDis) {
-                if (chartDisponibilidade) chartDisponibilidade.destroy();
-                chartDisponibilidade = new Chart(ctxDis, {
-                    type: 'line',
-                    data: {
-                        labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-                        datasets: [{
-                            label: 'Disponibilidade (%)',
-                            data: [85, 88, 82, 90, 87, 92],
-                            borderColor: '#2ECC71',
-                            backgroundColor: 'rgba(46, 204, 113, 0.1)',
-                            tension: 0.4
-                        }]
-                    },
-                    options: { responsive: true, plugins: { legend: { display: true } } }
-                });
-            }
+/* ============================================================
+   ORDENS DE SERVIÇO
+   ============================================================ */
+function openOrdemModal(id){
+  const form = document.querySelector('#modalOrdem form');
+  form.reset();
+  document.getElementById('ordemId').value = '';
+  document.getElementById('modalOrdemTitle').textContent = 'Nova Ordem de Serviço';
 
-            const ctxFalhas = document.getElementById('chartFalhas');
-            if (ctxFalhas) {
-                if (chartFalhas) chartFalhas.destroy();
-                chartFalhas = new Chart(ctxFalhas, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Elétrico', 'Freios', 'Motor', 'Suspensão', 'Outros'],
-                        datasets: [{
-                            data: [35, 25, 20, 15, 5],
-                            backgroundColor: ['#E74C3C', '#F39C12', '#F4C430', '#2ECC71', '#1B4F72']
-                        }]
-                    },
-                    options: { responsive: true, plugins: { legend: { display: true } } }
-                });
-            }
-        }
+  // Popular select de viaturas
+  const sel = document.getElementById('oViatura');
+  const viaturas = Store.listarViaturas();
+  if(!viaturas.length){
+    toast('Cadastre uma viatura antes de criar ordens.', 'warning');
+    return;
+  }
+  sel.innerHTML = '<option value="">Selecione</option>' + viaturas.map(v=>
+    `<option value="${v.id}">${esc(v.numero)} - ${esc(v.placa)}</option>`).join('');
 
-        // Mapa
-        let map, markers = {};
-        const mapLayers = {
-            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }),
-            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri' }),
-            terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution: '© OpenTopoMap' })
-        };
+  document.getElementById('oData').value = todayISO();
 
-        function initMap() {
-            if (map) {
-                map.invalidateSize();
-                return;
-            }
+  if(id){
+    const o = Store.getOrdem(id);
+    if(!o) return;
+    document.getElementById('modalOrdemTitle').textContent = 'Editar Ordem de Serviço';
+    document.getElementById('ordemId').value = o.id;
+    document.getElementById('oViatura').value = o.viaturaId;
+    preencherPlacaOrdem();
+    document.getElementById('oTipo').value = o.tipo || 'Corretiva';
+    document.getElementById('oData').value = o.data;
+    document.getElementById('oDescricao').value = o.descricao || '';
+    document.getElementById('oPecas').value = (o.pecas||[]).join(', ');
+    document.getElementById('oKm').value = o.quilometragem || 0;
+    document.getElementById('oResponsavel').value = o.responsavel || '';
+    document.getElementById('oCusto').value = o.custo || 0;
+    document.getElementById('oTempo').value = o.tempoParada || 0;
+    document.getElementById('oStatus').value = o.status || 'Agendada';
+    document.getElementById('oObs').value = o.observacoes || '';
+  }
+  openModal('modalOrdem');
+}
 
-            map = L.map('map').setView([-26.92, -49.07], 13);
-            mapLayers.osm.addTo(map);
+function preencherPlacaOrdem(){
+  const id = parseInt(document.getElementById('oViatura').value);
+  const v = Store.getViatura(id);
+  document.getElementById('oPlaca').value = v ? v.placa : '';
+}
 
-            const db = getDB();
-            db.viaturas.forEach((v, i) => {
-                const lat = -26.92 + (i * 0.01);
-                const lng = -49.07 + (i * 0.01);
-                const color = v.status === 'Em operação' ? '#2ECC71' : v.status === 'Em manutenção' ? '#F39C12' : '#E74C3C';
-                const marker = L.marker([lat, lng], {
-                    icon: L.divIcon({
-                        html: `<div style="background-color: ${color}; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">🚔</div>`,
-                        iconSize: [40, 40],
-                        iconAnchor: [20, 20]
-                    })
-                }).bindPopup(`<strong>${v.numero}</strong><br>Placa: ${v.placa}<br>Status: ${v.status}`).addTo(map);
-                markers[v.id] = marker;
-            });
+function salvarOrdem(e){
+  e.preventDefault();
+  const id = document.getElementById('ordemId').value;
+  const viaturaId = parseInt(document.getElementById('oViatura').value);
+  const viatura = Store.getViatura(viaturaId);
+  if(!viatura){ toast('Selecione uma viatura válida', 'error'); return; }
+  const descricao = document.getElementById('oDescricao').value.trim();
+  if(!descricao){ toast('Descrição é obrigatória', 'error'); return; }
+  const custo = parseFloat(document.getElementById('oCusto').value) || 0;
+  if(custo < 0){ toast('Custo não pode ser negativo', 'error'); return; }
+  const km = parseInt(document.getElementById('oKm').value) || 0;
+  if(km < 0){ toast('Quilometragem inválida', 'error'); return; }
+  const data = document.getElementById('oData').value;
+  if(!data){ toast('Data é obrigatória', 'error'); return; }
 
-            renderMapList();
-        }
+  const o = {
+    id: id ? Number(id) : undefined,
+    viaturaId,
+    placa: viatura.placa,
+    tipo: document.getElementById('oTipo').value,
+    data,
+    descricao,
+    pecas: document.getElementById('oPecas').value.split(',').map(p=>p.trim()).filter(Boolean),
+    quilometragem: km,
+    responsavel: document.getElementById('oResponsavel').value.trim(),
+    custo,
+    tempoParada: parseFloat(document.getElementById('oTempo').value) || 0,
+    status: document.getElementById('oStatus').value,
+    observacoes: document.getElementById('oObs').value.trim()
+  };
+  if(!o.id) delete o.id;
 
-        function changeMapType(type) {
-            document.getElementById('btnMapOsm').classList.remove('secondary');
-            document.getElementById('btnMapSat').classList.remove('secondary');
-            document.getElementById('btnMapTerrain').classList.remove('secondary');
+  Store.salvarOrdem(o);
 
-            if (type === 'osm') {
-                map.removeLayer(mapLayers.satellite);
-                map.removeLayer(mapLayers.terrain);
-                map.addLayer(mapLayers.osm);
-                document.getElementById('btnMapOsm').classList.add('secondary');
-            } else if (type === 'satellite') {
-                map.removeLayer(mapLayers.osm);
-                map.removeLayer(mapLayers.terrain);
-                map.addLayer(mapLayers.satellite);
-                document.getElementById('btnMapSat').classList.add('secondary');
-            } else if (type === 'terrain') {
-                map.removeLayer(mapLayers.osm);
-                map.removeLayer(mapLayers.satellite);
-                map.addLayer(mapLayers.terrain);
-                document.getElementById('btnMapTerrain').classList.add('secondary');
-            }
-        }
+  // Se concluída e KM informada, atualizar viatura
+  if(o.status === 'Concluída' && o.quilometragem > 0){
+    const v = Store.getViatura(viaturaId);
+    if(v && o.quilometragem > (v.quilometragem || 0)){
+      Store.salvarViatura({ ...v, quilometragem: o.quilometragem });
+    }
+    // Se viatura estava em manutenção, mover para Operacional
+    if(v && v.status === 'Em Manutenção'){
+      Store.salvarViatura({ ...v, status: 'Operacional' });
+    }
+  }
+  // Se Em andamento, marca viatura como Em Manutenção
+  if(o.status === 'Em andamento' && viatura.status !== 'Em Manutenção'){
+    Store.salvarViatura({ ...viatura, status: 'Em Manutenção' });
+  }
 
-        function renderMapList() {
-            const db = getDB();
-            const container = document.getElementById('viaturasMapList');
-            container.innerHTML = db.viaturas.map(v => `
-                <div class="viatura-item" onclick="selectViaturaMap(${v.id})">
-                    <strong>${v.numero}</strong>
-                    <small>Placa: ${v.placa}<br>Modelo: ${v.modelo}<br>KM: ${v.quilometragem}</small>
-                </div>
-            `).join('');
-        }
+  closeModal('modalOrdem');
+  toast(id ? 'Ordem atualizada com sucesso!' : 'Ordem de Serviço criada com sucesso!');
+  renderOrdens();
+  renderViaturas();
+  renderDashboard();
+  renderHistorico();
+  renderIndicadores();
+}
 
-        function selectViaturaMap(id) {
-            if (markers[id]) {
-                const latlng = markers[id].getLatLng();
-                map.setView(latlng, 15);
-                markers[id].openPopup();
-            }
-        }
+function excluirOrdem(id){
+  const o = Store.getOrdem(id);
+  if(!o) return;
+  confirmar(`Excluir a ordem ${o.numero}?`, () => {
+    Store.excluirOrdem(id);
+    toast('Ordem excluída com sucesso!');
+    renderOrdens();
+    renderHistorico();
+    renderDashboard();
+    renderIndicadores();
+  });
+}
 
-        // Event Listeners
-        document.getElementById('viaturaFilter')?.addEventListener('input', renderViaturas);
-        document.getElementById('searchInput')?.addEventListener('input', renderViaturas);
+function concluirOrdem(id){
+  const o = Store.getOrdem(id);
+  if(!o) return;
+  const dataHoje = todayISO();
+  confirmar(`Concluir a ordem ${o.numero}? A viatura será marcada como Operacional.`, () => {
+    Store.salvarOrdem({ ...o, status: 'Concluída', dataConclusao: dataHoje });
+    const v = Store.getViatura(o.viaturaId);
+    if(v && v.status === 'Em Manutenção') Store.salvarViatura({ ...v, status: 'Operacional' });
+    toast('Ordem concluída! Histórico e indicadores atualizados.');
+    renderOrdens();
+    renderViaturas();
+    renderHistorico();
+    renderDashboard();
+    renderIndicadores();
+  });
+}
 
-        // Init
-        initDB();
-        renderViaturas();
-        renderOrdens();
-        renderHistorico();
-    </script>
+function renderOrdens(){
+  const tbody = document.getElementById('ordensTable');
+  if(!tbody) return;
+  const filtro = (document.getElementById('ordemFilter')?.value || '').toLowerCase();
+  const stFiltro = document.getElementById('ordemStatusFilter')?.value || '';
+  const tpFiltro = document.getElementById('ordemTipoFilter')?.value || '';
+
+  const lista = Store.listarOrdens().filter(o => {
+    if(stFiltro && o.status !== stFiltro) return false;
+    if(tpFiltro && o.tipo !== tpFiltro) return false;
+    if(filtro){
+      const v = Store.getViatura(o.viaturaId);
+      const s = `${o.numero} ${o.descricao} ${o.responsavel} ${v?.numero||''} ${v?.placa||''}`.toLowerCase();
+      if(!s.includes(filtro)) return false;
+    }
+    return true;
+  }).sort((a,b)=> new Date(b.data) - new Date(a.data));
+
+  if(!lista.length){
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><i class="fas fa-clipboard-list"></i>Nenhuma ordem de serviço encontrada.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map(o => {
+    const v = Store.getViatura(o.viaturaId);
+    const acoes = [];
+    if(o.status !== 'Concluída' && o.status !== 'Cancelada'){
+      acoes.push(`<button class="btn-sm" onclick="concluirOrdem(${o.id})" title="Concluir">✅</button>`);
+    }
+    acoes.push(`<button class="secondary btn-sm" onclick="openOrdemModal(${o.id})" title="Editar">✏️</button>`);
+    acoes.push(`<button class="danger btn-sm" onclick="excluirOrdem(${o.id})" title="Excluir">🗑️</button>`);
+    return `
+      <tr>
+        <td><strong>${esc(o.numero)}</strong></td>
+        <td>${esc(v?.numero||'-')}</td>
+        <td>${esc(v?.placa || o.placa || '-')}</td>
+        <td>${statusBadge(o.tipo)}</td>
+        <td>${fmtData(o.data)}</td>
+        <td>${esc(o.responsavel)}</td>
+        <td>${fmtMoeda(o.custo)}</td>
+        <td>${statusBadge(o.status)}</td>
+        <td><div class="actions-cell">${acoes.join('')}</div></td>
+      </tr>`;
+  }).join('');
+}
+
+/* ============================================================
+   HISTÓRICO (derivado das ordens concluídas)
+   ============================================================ */
+function renderHistorico(){
+  const viaturas = Store.listarViaturas();
+  const concluidas = Store.listarOrdens().filter(o => o.status === 'Concluída');
+
+  // Atualizar select de viaturas no filtro
+  const selV = document.getElementById('histViaturaFilter');
+  if(selV && selV.options.length <= 1){
+    selV.innerHTML = '<option value="">Todas as Viaturas</option>' +
+      viaturas.map(v=>`<option value="${v.id}">${esc(v.numero)} - ${esc(v.placa)}</option>`).join('');
+  }
+
+  const filtro = (document.getElementById('histFilter')?.value || '').toLowerCase();
+  const vFiltro = document.getElementById('histViaturaFilter')?.value || '';
+  const tFiltro = document.getElementById('histTipoFilter')?.value || '';
+  const rFiltro = (document.getElementById('histRespFilter')?.value || '').toLowerCase();
+  const dIni = document.getElementById('histDataIni')?.value;
+  const dFim = document.getElementById('histDataFim')?.value;
+
+  const lista = concluidas.filter(o => {
+    if(vFiltro && String(o.viaturaId) !== vFiltro) return false;
+    if(tFiltro && o.tipo !== tFiltro) return false;
+    if(rFiltro && !(o.responsavel||'').toLowerCase().includes(rFiltro)) return false;
+    if(dIni && o.data < dIni) return false;
+    if(dFim && o.data > dFim) return false;
+    if(filtro){
+      const v = Store.getViatura(o.viaturaId);
+      const s = `${o.numero} ${o.descricao} ${o.responsavel} ${v?.numero||''} ${v?.placa||''}`.toLowerCase();
+      if(!s.includes(filtro)) return false;
+    }
+    return true;
+  }).sort((a,b)=> new Date(b.data) - new Date(a.data));
+
+  // Totais (das ordens filtradas)
+  const custo = lista.reduce((s,o)=>s+(Number(o.custo)||0),0);
+  const tempo = lista.reduce((s,o)=>s+(Number(o.tempoParada)||0),0);
+  document.getElementById('histCusto').textContent = fmtMoeda(custo);
+  document.getElementById('histTempo').textContent = tempo.toFixed(1) + ' h';
+  document.getElementById('histTotal').textContent = lista.length;
+
+  const cont = document.getElementById('timelineContainer');
+  if(!lista.length){
+    cont.innerHTML = `<div class="empty-state"><i class="fas fa-history"></i>Nenhuma manutenção concluída no período.</div>`;
+    return;
+  }
+  cont.innerHTML = lista.map(o => {
+    const v = Store.getViatura(o.viaturaId);
+    return `
+      <div class="timeline-item">
+        <div class="card" style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div>
+              <strong>${esc(o.numero)} — ${esc(v?.numero||'Viatura removida')}</strong>
+              <div style="font-size:12px;color:#666;margin-top:4px;">
+                ${esc(v?.placa||'-')} • ${esc(v?.modelo||'-')} • ${fmtData(o.data)}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:18px;font-weight:700;color:var(--azul-medio);">${fmtMoeda(o.custo)}</div>
+              <small style="color:#999;">${(Number(o.tempoParada)||0)}h de parada</small>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:14px;">
+            <div><strong>Serviço:</strong> ${esc(o.descricao)}</div>
+            ${o.pecas && o.pecas.length ? `<div style="margin-top:6px;"><strong>Peças:</strong> ${o.pecas.map(esc).join(', ')}</div>`:''}
+            <div style="margin-top:6px;font-size:12px;color:#666;">
+              <strong>Responsável:</strong> ${esc(o.responsavel)} • <strong>Tipo:</strong> ${esc(o.tipo)} • <strong>KM:</strong> ${fmtNum(o.quilometragem)}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+let charts = {};
+
+function renderDashboard(){
+  const db = Store.getAll();
+  const k = calcularKPIs(db);
+
+  document.getElementById('dashTotal').textContent = k.total;
+  document.getElementById('dashOp').textContent = k.emOp;
+  document.getElementById('dashMan').textContent = k.emMan;
+  document.getElementById('dashInd').textContent = k.indisp;
+  document.getElementById('dashOsAbertas').textContent = k.osAbertas;
+  document.getElementById('dashOsConc').textContent = k.osConcluidas;
+  document.getElementById('dashCusto').textContent = fmtMoeda(k.custoTotal);
+  document.getElementById('dashDisp').textContent = k.disponibilidade.toFixed(1) + '%';
+
+  renderAlertas();
+  renderChartsDashboard();
+}
+
+function renderAlertas(){
+  const cont = document.getElementById('alertasContainer');
+  const db = Store.getAll();
+  const hoje = new Date();
+  const alertas = [];
+
+  db.viaturas.forEach(v=>{
+    if(v.status === 'Em Manutenção'){
+      alertas.push({ t:'warning', msg:`Viatura ${v.numero} (${v.placa}) está em manutenção.` });
+    }
+    if(v.status === 'Indisponível'){
+      alertas.push({ t:'danger', msg:`Viatura ${v.numero} (${v.placa}) está indisponível.` });
+    }
+    if(v.proximaManutencaoData){
+      const d = new Date(v.proximaManutencaoData + 'T00:00:00');
+      const dias = Math.floor((d - hoje) / (1000*60*60*24));
+      if(dias < 0){
+        alertas.push({ t:'danger', msg:`Viatura ${v.numero} — manutenção preventiva atrasada há ${Math.abs(dias)} dia(s).` });
+      } else if(dias <= 15){
+        alertas.push({ t:'warning', msg:`Viatura ${v.numero} — manutenção preventiva em ${dias} dia(s).` });
+      }
+    }
+    if(v.proximaManutencaoKm && v.quilometragem){
+      const diff = v.proximaManutencaoKm - v.quilometragem;
+      if(diff <= 0){
+        alertas.push({ t:'danger', msg:`Viatura ${v.numero} — KM excedido para próxima manutenção (${fmtNum(v.quilometragem)}/${fmtNum(v.proximaManutencaoKm)}).` });
+      } else if(diff <= 1000){
+        alertas.push({ t:'warning', msg:`Viatura ${v.numero} — faltam ${fmtNum(diff)} km para a próxima manutenção.` });
+      }
+    }
+  });
+
+  // OS atrasadas (agendadas com data passada)
+  db.ordensServico.forEach(o=>{
+    if(o.status === 'Agendada'){
+      const d = new Date(o.data + 'T00:00:00');
+      if(d < hoje){
+        const v = Store.getViatura(o.viaturaId);
+        alertas.push({ t:'danger', msg:`Ordem ${o.numero} (${v?.numero||'viatura removida'}) está atrasada desde ${fmtData(o.data)}.` });
+      }
+    }
+  });
+
+  if(!alertas.length){
+    cont.innerHTML = `<div class="empty-state"><i class="fas fa-check-circle"></i>Nenhum alerta no momento. Tudo em ordem!</div>`;
+    return;
+  }
+  cont.innerHTML = alertas.map(a => `<div class="alert ${a.t}">${esc(a.msg)}</div>`).join('');
+}
+
+function renderChartsDashboard(){
+  const db = Store.getAll();
+  const ordens = db.ordensServico;
+
+  // Manutenções por mês (baseado nas ordens concluídas)
+  const porMes = ordensPorMes(ordens.filter(o=>o.status==='Concluída'), 6);
+  drawChart('chartManutencoes', 'bar', {
+    labels: porMes.map(m=>m.label),
+    datasets: [{ label:'Manutenções', data: porMes.map(m=>m.total), backgroundColor:'#1B4F72' }]
+  });
+
+  // Status das viaturas
+  const k = calcularKPIs(db);
+  const totalStatus = k.emOp + k.emMan + k.indisp;
+  drawChart('chartStatus', 'doughnut', {
+    labels: ['Operacional','Em Manutenção','Indisponível'],
+    datasets: [{ data:[k.emOp, k.emMan, k.indisp], backgroundColor:['#2ECC71','#F39C12','#E74C3C'] }]
+  }, totalStatus === 0 ? 'Nenhuma viatura cadastrada.' : null);
+}
+
+function drawChart(canvasId, type, data, emptyMsg){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if(charts[canvasId]) charts[canvasId].destroy();
+
+  // Caso vazio
+  const ds = data?.datasets?.[0]?.data || [];
+  const semDados = ds.every(v => !v);
+
+  charts[canvasId] = new Chart(ctx, {
+    type,
+    data: semDados ? { labels:['Sem dados'], datasets:[{ data:[1], backgroundColor:['#e0e0e0'] }] } : data,
+    options: {
+      responsive:true,
+      maintainAspectRatio:true,
+      plugins:{
+        legend:{ display: type !== 'bar' || semDados ? true : true },
+        tooltip:{ enabled: !semDados }
+      },
+      scales: (type==='bar'||type==='line') ? { y:{ beginAtZero:true } } : undefined
+    }
+  });
+}
+
+/* ============================================================
+   INDICADORES
+   ============================================================ */
+function renderIndicadores(){
+  const db = Store.getAll();
+  const k = calcularKPIs(db);
+
+  document.getElementById('kpiDisp').textContent = k.disponibilidade.toFixed(1) + '%';
+  document.getElementById('kpiMttr').textContent = k.mttr.toFixed(1) + ' h';
+  document.getElementById('kpiMtbf').textContent = k.mtbf > 0 ? k.mtbf.toFixed(1) + ' d' : '—';
+  document.getElementById('kpiCustoMedio').textContent = fmtMoeda(k.custoMedio);
+
+  // Disponibilidade por mês (linha)
+  const ordens = db.ordensServico;
+  const agora = new Date();
+  const labels = [], dados = [];
+  for(let i = 5; i >= 0; i--){
+    const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    labels.push(d.toLocaleDateString('pt-BR',{month:'short'}).replace('.',''));
+    // Aproximação: viaturas operacionais hoje vs total (não temos histórico real)
+    // Como não guardamos snapshot por mês, mostramos a disponibilidade atual repetida
+    dados.push(k.disponibilidade);
+  }
+  drawChart('chartDisponibilidade', 'line', {
+    labels,
+    datasets:[{ label:'Disponibilidade (%)', data:dados, borderColor:'#2ECC71', backgroundColor:'rgba(46,204,113,.15)', tension:.3, fill:true }]
+  });
+
+  // Tipos de falhas — apenas corretivas concluídas
+  const corr = ordens.filter(o=>o.status==='Concluída' && o.tipo==='Corretiva');
+  const cats = {};
+  corr.forEach(o=>{
+    const c = categorizarFalha(o.descricao);
+    cats[c] = (cats[c]||0) + 1;
+  });
+  const corLabel = Object.keys(cats), corData = Object.values(cats);
+  drawChart('chartFalhas', 'doughnut', {
+    labels: corLabel.length?corLabel:['Sem dados'],
+    datasets:[{ data: corData.length?corData:[1], backgroundColor:['#E74C3C','#F39C12','#F4C430','#2ECC71','#1B4F72','#9B59B6'] }]
+  }, corData.length?null:'Nenhuma manutenção corretiva registrada.');
+
+  // Custos por mês
+  const custos = ordensPorMes(ordens.filter(o=>o.status==='Concluída'), 6);
+  drawChart('chartCustos', 'bar', {
+    labels: custos.map(m=>m.label),
+    datasets:[{ label:'Custo (R$)', data: custos.map(m=>m.custo), backgroundColor:'#F39C12' }]
+  });
+}
+
+/* ============================================================
+   MAPA / RASTREAMENTO
+   ============================================================ */
+let map = null, markers = {};
+const mapLayers = {
+  osm: () => L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }),
+  satellite: () => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution:'© Esri' }),
+  terrain: () => L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { attribution:'© OpenTopoMap' })
+};
+let currentLayer = null;
+
+function initMap(){
+  const el = document.getElementById('map');
+  if(!el) return;
+  if(map){ setTimeout(()=>map.invalidateSize(), 100); renderMapMarkers(); return; }
+
+  map = L.map('map').setView([-26.9124, -49.0655], 13);
+  currentLayer = mapLayers.osm().addTo(map);
+  renderMapMarkers();
+}
+
+function renderMapMarkers(){
+  if(!map) return;
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
+
+  const viaturas = Store.listarViaturas().filter(v => typeof v.latitude === 'number' && typeof v.longitude === 'number');
+  if(!viaturas.length){
+    // Nenhuma viatura com coordenadas
+    L.popup()
+      .setLatLng([-26.9124, -49.0655])
+      .setContent('<b>Sem viaturas com coordenadas</b><br>Cadastre latitude/longitude em uma viatura para exibi-la no mapa.')
+      .openOn(map);
+    return;
+  }
+  viaturas.forEach(v=>{
+    const cor = v.status === 'Operacional' ? '#2ECC71' : v.status === 'Em Manutenção' ? '#F39C12' : '#E74C3C';
+    const icon = L.divIcon({
+      html:`<div style="background:${cor};color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);">🚔</div>`,
+      iconSize:[36,36], iconAnchor:[18,18]
+    });
+    const m = L.marker([v.latitude, v.longitude], { icon })
+      .bindPopup(`<strong>${esc(v.numero)}</strong><br>Placa: ${esc(v.placa)}<br>Modelo: ${esc(v.modelo)}<br>Status: ${esc(v.status)}<br>Unidade: ${esc(v.unidade)}`)
+      .addTo(map);
+    markers[v.id] = m;
+  });
+  // Centraliza na primeira
+  const first = Object.values(markers)[0];
+  if(first) map.setView(first.getLatLng(), 13);
+}
+
+function renderMapList(){
+  const cont = document.getElementById('viaturasMapList');
+  if(!cont) return;
+  const viaturas = Store.listarViaturas();
+  if(!viaturas.length){
+    cont.innerHTML = `<div class="empty-state"><i class="fas fa-car"></i>Nenhuma viatura cadastrada.</div>`;
+    return;
+  }
+  cont.innerHTML = viaturas.map(v=>`
+    <div class="viatura-item" onclick="focusViatura(${v.id})">
+      <strong>${esc(v.numero)} ${v.latitude!==null?'📍':'⚠️'}</strong>
+      <small>Placa: ${esc(v.placa)} • ${esc(v.modelo)}<br>KM: ${fmtNum(v.quilometragem)} • ${esc(v.unidade)}</small>
+    </div>`).join('');
+}
+
+function focusViatura(id){
+  if(markers[id]){
+    const ll = markers[id].getLatLng();
+    map.setView(ll, 15);
+    markers[id].openPopup();
+  } else {
+    toast('Esta viatura não possui coordenadas cadastradas.', 'warning');
+  }
+}
+
+function changeMapType(type){
+  if(!map) return;
+  if(currentLayer) map.removeLayer(currentLayer);
+  currentLayer = mapLayers[type]().addTo(map);
+  ['osm','satellite','terrain'].forEach(t=>{
+    const btn = document.getElementById('btnMap' + (t==='osm'?'Osm':t==='satellite'?'Sat':'Terrain'));
+    if(btn) btn.classList.toggle('secondary', t !== type);
+  });
+}
+
+/* ============================================================
+   EVENTOS E INICIALIZAÇÃO
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  Store.init();
+
+  // Se DB existia na v1, migração já foi aplicada em Store.read().
+  // Se DB vazio, popular com dados mínimos de exemplo (não fictícios do dashboard — só cadastros).
+  const db = Store.getAll();
+  if(!db.viaturas.length && !db.ordensServico.length && !localStorage.getItem('frotapm_seeded')){
+    // Sem seed fictício. O sistema funciona vazio. Registramos flag para não re-seedar.
+    localStorage.setItem('frotapm_seeded','1');
+  }
+
+  // Filters listeners
+  ['viaturaFilter','viaturaStatusFilter','viaturaUnidadeFilter'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', renderViaturas);
+  });
+  ['ordemFilter','ordemStatusFilter','ordemTipoFilter'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', renderOrdens);
+  });
+  ['histFilter','histViaturaFilter','histTipoFilter','histRespFilter','histDataIni','histDataFim'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', renderHistorico);
+  });
+  const si = document.getElementById('searchInput');
+  if(si) si.addEventListener('input', ()=>{
+    // busca global: foca em viaturas
+    const vf = document.getElementById('viaturaFilter');
+    if(vf){ vf.value = si.value; }
+    if(document.getElementById('viaturas')?.classList.contains('active')) renderViaturas();
+    else { showPage('viaturas'); renderViaturas(); }
+  });
+
+  // Reagir a qualquer alteração do store
+  window.addEventListener('frota:update', ()=>{
+    // Redesenha a página visível (mantém sincronia)
+    const ativo = document.querySelector('.page.active')?.id;
+    if(ativo === 'dashboard') renderDashboard();
+    if(ativo === 'viaturas') renderViaturas();
+    if(ativo === 'ordens') renderOrdens();
+    if(ativo === 'historico') renderHistorico();
+    if(ativo === 'indicadores') renderIndicadores();
+    if(ativo === 'rastreamento'){ renderMapMarkers(); renderMapList(); }
+  });
+
+  // Render inicial
+  renderDashboard();
+  renderViaturas();
+  renderOrdens();
+  renderHistorico();
+  renderIndicadores();
+});
+</script>
 </body>
 </html>
