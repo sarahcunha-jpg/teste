@@ -109,6 +109,9 @@ table tbody tr:hover{background:#f9f9f9}
 .toast.info{background:var(--azul-medio)}
 @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
 .actions-cell{display:flex;gap:5px;flex-wrap:wrap}
+#loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.95);z-index:5000;align-items:center;justify-content:center;flex-direction:column;gap:15px}
+#loading-overlay.active{display:flex}
+#loading-overlay p{color:#666;font-weight:600}
 @media (max-width:768px){
 .sidebar{width:100%;height:auto;position:relative}
 .main-wrapper{margin-left:0}
@@ -152,7 +155,10 @@ table th,table td{padding:8px}
 <nav class="navbar">
   <h1 style="font-size:22px;font-weight:700;margin:0;">Frota PM - Blumenau</h1>
   <div class="navbar-search"><input type="text" placeholder="🔍 Pesquisar viaturas por placa/número..." id="searchInput"></div>
-  <div class="navbar-icons"><i class="fas fa-bell" title="Alertas"></i><i class="fas fa-cog" title="Configurações"></i></div>
+  <div class="navbar-icons">
+    <i class="fas fa-bell" title="Alertas" id="iconStatus" style="color:var(--verde);"></i>
+    <i class="fas fa-cog" title="Configurações"></i>
+  </div>
 </nav>
 
 <div class="main-content">
@@ -410,104 +416,109 @@ table th,table td{padding:8px}
   </div>
 </div>
 
+<!-- OVERLAY DE CARREGAMENTO -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Carregando dados do servidor...</p>
+</div>
+
 <div id="toast-container"></div>
 
+<!-- config.js precisa vir ANTES do script principal para definir window.FROTA_API_URL -->
+<script src="config.js"></script>
 <script>
 /* ============================================================
-   CAMADA DE DADOS ÚNICA
+   CLIENTE DA API — substitui completamente o Store/localStorage
+   Mantém um cache em memória espelhando o servidor para que
+   todas as funções de render continuem síncronas.
    ============================================================ */
-const DB_KEY = 'frotapm_db';
-const DB_VERSION = 2;
+const API_URL = (window.FROTA_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
-const DEFAULT_DATA = { version: DB_VERSION, viaturas: [], ordensServico: [] };
+const API = {
+  _cache: { viaturas: [], ordens: [] },
+  _online: false,
 
-function migrateDB(db){
-  if(!db.version || db.version < 2){
-    (db.viaturas||[]).forEach(v=>{
-      if(v.status === 'Em operação') v.status = 'Operacional';
-      if(!v.tipo) v.tipo = 'Viatura Operacional';
-      if(!v.observacoes) v.observacoes = '';
-      if(typeof v.latitude === 'undefined') v.latitude = null;
-      if(typeof v.longitude === 'undefined') v.longitude = null;
-      if(typeof v.endereco === 'undefined') v.endereco = '';
-      if(typeof v.enderecoFormatado === 'undefined') v.enderecoFormatado = '';
+  isOnline() { return this._online; },
+
+  async _fetch(path, options = {}) {
+    const resp = await fetch(API_URL + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
     });
-    (db.ordensServico||[]).forEach(o=>{
-      if(!o.tipo) o.tipo = 'Corretiva';
-      if(!o.status) o.status = 'Concluída';
-      if(o.status === 'Finalizada') o.status = 'Concluída';
-      if(!o.pecas) o.pecas = [];
-      if(!o.quilometragem) o.quilometragem = 0;
-      if(!o.observacoes) o.observacoes = '';
-    });
-    db.version = DB_VERSION;
-  }
-  return db;
-}
+    if (!resp.ok) {
+      let msg = `Erro ${resp.status}`;
+      try { const j = await resp.json(); if (j.error) msg = j.error; } catch (_) {}
+      throw new Error(msg);
+    }
+    return resp.status === 204 ? null : resp.json();
+  },
 
-const Store = {
-  read(){
-    try{
-      const raw = localStorage.getItem(DB_KEY);
-      if(!raw) return null;
-      return migrateDB(JSON.parse(raw));
-    }catch(e){ console.error('Erro ao ler DB:', e); return null; }
+  async carregarTudo() {
+    const [vs, os] = await Promise.all([
+      this._fetch('/api/viaturas'),
+      this._fetch('/api/ordens')
+    ]);
+    this._cache.viaturas = vs;
+    this._cache.ordens = os;
+    this._online = true;
   },
-  write(db){
-    try{
-      localStorage.setItem(DB_KEY, JSON.stringify(db));
-      window.dispatchEvent(new Event('frota:update'));
-    }catch(e){ console.error('Erro ao salvar DB:', e); }
+
+  // Mesma interface do antigo Store.getAll()
+  getAll() {
+    return { viaturas: this._cache.viaturas, ordensServico: this._cache.ordens, version: 2 };
   },
-  init(){
-    let db = this.read();
-    if(!db){
-      db = JSON.parse(JSON.stringify(DEFAULT_DATA));
-      this.write(db);
-    } else if(db.version !== DB_VERSION){
-      this.write(db);
-    }
-  },
-  getAll(){ return this.read() || JSON.parse(JSON.stringify(DEFAULT_DATA)); },
-  listarViaturas(){ return this.getAll().viaturas; },
-  getViatura(id){ return this.listarViaturas().find(v => v.id === id); },
-  salvarViatura(v){
-    const db = this.getAll();
-    if(!v.id){
-      v.id = db.viaturas.length ? Math.max(...db.viaturas.map(x=>x.id)) + 1 : 1;
-      db.viaturas.push(v);
+  listarViaturas() { return this._cache.viaturas; },
+  getViatura(id) { return this._cache.viaturas.find(v => v.id === id); },
+  listarOrdens() { return this._cache.ordens; },
+  getOrdem(id) { return this._cache.ordens.find(o => o.id === id); },
+
+  async salvarViatura(v) {
+    const isEdit = !!v.id;
+    const payload = { ...v };
+    if (!isEdit) delete payload.id;
+    const saved = await this._fetch(
+      isEdit ? `/api/viaturas/${v.id}` : '/api/viaturas',
+      { method: isEdit ? 'PUT' : 'POST', body: JSON.stringify(payload) }
+    );
+    if (isEdit) {
+      const i = this._cache.viaturas.findIndex(x => x.id === saved.id);
+      if (i >= 0) this._cache.viaturas[i] = saved;
     } else {
-      const i = db.viaturas.findIndex(x => x.id === v.id);
-      if(i >= 0) db.viaturas[i] = { ...db.viaturas[i], ...v };
+      this._cache.viaturas.unshift(saved);
     }
-    this.write(db);
-    return v;
+    window.dispatchEvent(new Event('frota:update'));
+    return saved;
   },
-  excluirViatura(id){
-    const db = this.getAll();
-    db.viaturas = db.viaturas.filter(v => v.id !== id);
-    db.ordensServico = db.ordensServico.filter(o => o.viaturaId !== id);
-    this.write(db);
+
+  async excluirViatura(id) {
+    await this._fetch(`/api/viaturas/${id}`, { method: 'DELETE' });
+    this._cache.viaturas = this._cache.viaturas.filter(v => v.id !== id);
+    this._cache.ordens = this._cache.ordens.filter(o => o.viaturaId !== id);
+    window.dispatchEvent(new Event('frota:update'));
   },
-  listarOrdens(){ return this.getAll().ordensServico; },
-  getOrdem(id){ return this.listarOrdens().find(o => o.id === id); },
-  salvarOrdem(o){
-    const db = this.getAll();
-    if(!o.id){
-      o.id = db.ordensServico.length ? Math.max(...db.ordensServico.map(x=>x.id)) + 1 : 1;
-      o.numero = `OS-${String(o.id).padStart(3,'0')}`;
-      db.ordensServico.push(o);
+
+  async salvarOrdem(o) {
+    const isEdit = !!o.id;
+    const payload = { ...o };
+    if (!isEdit) delete payload.id;
+    const saved = await this._fetch(
+      isEdit ? `/api/ordens/${o.id}` : '/api/ordens',
+      { method: isEdit ? 'PUT' : 'POST', body: JSON.stringify(payload) }
+    );
+    if (isEdit) {
+      const i = this._cache.ordens.findIndex(x => x.id === saved.id);
+      if (i >= 0) this._cache.ordens[i] = saved;
     } else {
-      const i = db.ordensServico.findIndex(x => x.id === o.id);
-      if(i >= 0) db.ordensServico[i] = { ...db.ordensServico[i], ...o };
+      this._cache.ordens.unshift(saved);
     }
-    this.write(db);
-    return o;
+    window.dispatchEvent(new Event('frota:update'));
+    return saved;
   },
-  excluirOrdem(id){
-    const db = this.getAll();
-    db.ordensServico = db.ordensServico.filter(o => o.id !== id);
-    this.write(db);
+
+  async excluirOrdem(id) {
+    await this._fetch(`/api/ordens/${id}`, { method: 'DELETE' });
+    this._cache.ordens = this._cache.ordens.filter(o => o.id !== id);
+    window.dispatchEvent(new Event('frota:update'));
   }
 };
 
@@ -547,11 +558,9 @@ function confirmar(msg, onOk){
 
 /* ============================================================
    GEOCODIFICAÇÃO via Nominatim (OpenStreetMap) — Brasil
-   Sem API key. Respeita 1 req/s (uso manual, sem problema).
    ============================================================ */
 async function geocodificar(endereco){
   if(!endereco || !endereco.trim()) return null;
-  // Se o usuário não escreveu "Brasil", reforçamos no texto e restringimos o país.
   let q = endereco.trim();
   if(!/\bbrasil\b/i.test(q)) q += ', Brasil';
   const url = 'https://nominatim.openstreetmap.org/search?'
@@ -574,10 +583,10 @@ async function geocodificar(endereco){
 }
 
 /* ============================================================
-   CÁLCULOS (KPIs)
+   CÁLCULOS (KPIs) — inalterado
    ============================================================ */
 function calcularKPIs(db){
-  db = db || Store.getAll();
+  db = db || API.getAll();
   const viaturas = db.viaturas;
   const ordens = db.ordensServico;
   const emOp = viaturas.filter(v=>v.status==='Operacional').length;
@@ -668,7 +677,7 @@ function openViaturaModal(id){
   const st = document.getElementById('vGeoStatus');
   if(st) st.textContent = '';
   if(id){
-    const v = Store.getViatura(id);
+    const v = API.getViatura(id);
     if(!v) return;
     document.getElementById('modalViaturaTitle').textContent = 'Editar Viatura';
     document.getElementById('viaturaId').value = v.id;
@@ -705,7 +714,7 @@ async function salvarViatura(e){
   if(ano < 1980 || ano > 2100){ toast('Ano inválido', 'error'); return; }
   if(isNaN(km) || km < 0){ toast('Quilometragem inválida', 'error'); return; }
 
-  const duplicada = Store.listarViaturas().find(v => v.placa === placa && v.id !== Number(id) && v.id !== parseInt(id));
+  const duplicada = API.listarViaturas().find(v => v.placa === placa && v.id !== Number(id) && v.id !== parseInt(id));
   if(duplicada){ toast(`Placa ${placa} já cadastrada na viatura ${duplicada.numero}`, 'error'); return; }
 
   let latitude = null, longitude = null, enderecoFormatado = '';
@@ -754,7 +763,7 @@ async function salvarViatura(e){
 
   // Se editou e deixou o endereço em branco, preserva lat/lng antigos
   if(id && !endereco){
-    const antiga = Store.getViatura(Number(id));
+    const antiga = API.getViatura(Number(id));
     if(antiga){
       v.latitude = antiga.latitude;
       v.longitude = antiga.longitude;
@@ -762,31 +771,39 @@ async function salvarViatura(e){
     }
   }
 
-  Store.salvarViatura(v);
-  closeModal('modalViatura');
-  toast(id ? 'Viatura atualizada com sucesso!' : 'Viatura cadastrada com sucesso!');
-  renderViaturas();
-  renderDashboard();
-  if(document.getElementById('rastreamento').classList.contains('active')){
-    renderMapMarkers();
-    renderMapList();
+  try {
+    await API.salvarViatura(v);
+    closeModal('modalViatura');
+    toast(id ? 'Viatura atualizada com sucesso!' : 'Viatura cadastrada com sucesso!');
+    renderViaturas();
+    renderDashboard();
+    if(document.getElementById('rastreamento').classList.contains('active')){
+      renderMapMarkers();
+      renderMapList();
+    }
+  } catch(err) {
+    toast('Erro ao salvar: ' + err.message, 'error');
   }
 }
 
 function excluirViatura(id){
-  const v = Store.getViatura(id);
+  const v = API.getViatura(id);
   if(!v) return;
-  const ordens = Store.listarOrdens().filter(o => o.viaturaId === id);
+  const ordens = API.listarOrdens().filter(o => o.viaturaId === id);
   const msg = ordens.length
     ? `Excluir ${v.numero} (${v.placa})? Isso também removerá ${ordens.length} ordem(ns) de serviço relacionada(s).`
     : `Excluir ${v.numero} (${v.placa})?`;
-  confirmar(msg, () => {
-    Store.excluirViatura(id);
-    toast('Viatura excluída com sucesso!');
-    renderViaturas();
-    renderDashboard();
-    renderOrdens();
-    renderHistorico();
+  confirmar(msg, async () => {
+    try {
+      await API.excluirViatura(id);
+      toast('Viatura excluída com sucesso!');
+      renderViaturas();
+      renderDashboard();
+      renderOrdens();
+      renderHistorico();
+    } catch(err) {
+      toast('Erro ao excluir: ' + err.message, 'error');
+    }
   });
 }
 
@@ -797,7 +814,7 @@ function renderViaturas(){
   const stFiltro = document.getElementById('viaturaStatusFilter')?.value || '';
   const unFiltro = (document.getElementById('viaturaUnidadeFilter')?.value || '').toLowerCase();
 
-  const lista = Store.listarViaturas().filter(v => {
+  const lista = API.listarViaturas().filter(v => {
     if(stFiltro && v.status !== stFiltro) return false;
     if(unFiltro && !(v.unidade||'').toLowerCase().includes(unFiltro)) return false;
     if(filtro){
@@ -839,7 +856,7 @@ function openOrdemModal(id){
   document.getElementById('modalOrdemTitle').textContent = 'Nova Ordem de Serviço';
 
   const sel = document.getElementById('oViatura');
-  const viaturas = Store.listarViaturas();
+  const viaturas = API.listarViaturas();
   if(!viaturas.length){
     toast('Cadastre uma viatura antes de criar ordens.', 'warning');
     return;
@@ -850,7 +867,7 @@ function openOrdemModal(id){
   document.getElementById('oData').value = todayISO();
 
   if(id){
-    const o = Store.getOrdem(id);
+    const o = API.getOrdem(id);
     if(!o) return;
     document.getElementById('modalOrdemTitle').textContent = 'Editar Ordem de Serviço';
     document.getElementById('ordemId').value = o.id;
@@ -872,15 +889,15 @@ function openOrdemModal(id){
 
 function preencherPlacaOrdem(){
   const id = parseInt(document.getElementById('oViatura').value);
-  const v = Store.getViatura(id);
+  const v = API.getViatura(id);
   document.getElementById('oPlaca').value = v ? v.placa : '';
 }
 
-function salvarOrdem(e){
+async function salvarOrdem(e){
   e.preventDefault();
   const id = document.getElementById('ordemId').value;
   const viaturaId = parseInt(document.getElementById('oViatura').value);
-  const viatura = Store.getViatura(viaturaId);
+  const viatura = API.getViatura(viaturaId);
   if(!viatura){ toast('Selecione uma viatura válida', 'error'); return; }
   const descricao = document.getElementById('oDescricao').value.trim();
   if(!descricao){ toast('Descrição é obrigatória', 'error'); return; }
@@ -908,57 +925,70 @@ function salvarOrdem(e){
   };
   if(!o.id) delete o.id;
 
-  Store.salvarOrdem(o);
+  try {
+    await API.salvarOrdem(o);
 
-  if(o.status === 'Concluída' && o.quilometragem > 0){
-    const v = Store.getViatura(viaturaId);
-    if(v && o.quilometragem > (v.quilometragem || 0)){
-      Store.salvarViatura({ ...v, quilometragem: o.quilometragem });
+    // Efeitos colaterais: atualizar a viatura conforme status da ordem
+    if(o.status === 'Concluída' && o.quilometragem > 0){
+      const v = API.getViatura(viaturaId);
+      if(v && o.quilometragem > (v.quilometragem || 0)){
+        await API.salvarViatura({ ...v, quilometragem: o.quilometragem });
+      }
+      if(v && v.status === 'Em Manutenção'){
+        await API.salvarViatura({ ...v, status: 'Operacional' });
+      }
     }
-    if(v && v.status === 'Em Manutenção'){
-      Store.salvarViatura({ ...v, status: 'Operacional' });
+    if(o.status === 'Em andamento' && viatura.status !== 'Em Manutenção'){
+      await API.salvarViatura({ ...viatura, status: 'Em Manutenção' });
     }
-  }
-  if(o.status === 'Em andamento' && viatura.status !== 'Em Manutenção'){
-    Store.salvarViatura({ ...viatura, status: 'Em Manutenção' });
-  }
 
-  closeModal('modalOrdem');
-  toast(id ? 'Ordem atualizada com sucesso!' : 'Ordem de Serviço criada com sucesso!');
-  renderOrdens();
-  renderViaturas();
-  renderDashboard();
-  renderHistorico();
-  renderIndicadores();
+    closeModal('modalOrdem');
+    toast(id ? 'Ordem atualizada com sucesso!' : 'Ordem de Serviço criada com sucesso!');
+    renderOrdens();
+    renderViaturas();
+    renderDashboard();
+    renderHistorico();
+    renderIndicadores();
+  } catch(err) {
+    toast('Erro ao salvar: ' + err.message, 'error');
+  }
 }
 
 function excluirOrdem(id){
-  const o = Store.getOrdem(id);
+  const o = API.getOrdem(id);
   if(!o) return;
-  confirmar(`Excluir a ordem ${o.numero}?`, () => {
-    Store.excluirOrdem(id);
-    toast('Ordem excluída com sucesso!');
-    renderOrdens();
-    renderHistorico();
-    renderDashboard();
-    renderIndicadores();
+  confirmar(`Excluir a ordem ${o.numero}?`, async () => {
+    try {
+      await API.excluirOrdem(id);
+      toast('Ordem excluída com sucesso!');
+      renderOrdens();
+      renderHistorico();
+      renderDashboard();
+      renderIndicadores();
+    } catch(err) {
+      toast('Erro ao excluir: ' + err.message, 'error');
+    }
   });
 }
 
 function concluirOrdem(id){
-  const o = Store.getOrdem(id);
+  const o = API.getOrdem(id);
   if(!o) return;
   const dataHoje = todayISO();
-  confirmar(`Concluir a ordem ${o.numero}? A viatura será marcada como Operacional.`, () => {
-    Store.salvarOrdem({ ...o, status: 'Concluída', dataConclusao: dataHoje });
-    const v = Store.getViatura(o.viaturaId);
-    if(v && v.status === 'Em Manutenção') Store.salvarViatura({ ...v, status: 'Operacional' });
-    toast('Ordem concluída! Histórico e indicadores atualizados.');
-    renderOrdens();
-    renderViaturas();
-    renderHistorico();
-    renderDashboard();
-    renderIndicadores();
+  confirmar(`Concluir a ordem ${o.numero}? A viatura será marcada como Operacional.`, async () => {
+    try {
+      await API.salvarOrdem({ ...o, status: 'Concluída', dataConclusao: dataHoje });
+      const v = API.getViatura(o.viaturaId);
+      if(v && v.status === 'Em Manutenção') await API.salvarViatura({ ...v, status: 'Operacional' });
+      toast('Ordem concluída! Histórico e indicadores atualizados.');
+      renderOrdens();
+      renderViaturas();
+      renderHistorico();
+      renderDashboard();
+      renderIndicadores();
+    } catch(err) {
+      toast('Erro ao concluir: ' + err.message, 'error');
+    }
   });
 }
 
@@ -969,11 +999,11 @@ function renderOrdens(){
   const stFiltro = document.getElementById('ordemStatusFilter')?.value || '';
   const tpFiltro = document.getElementById('ordemTipoFilter')?.value || '';
 
-  const lista = Store.listarOrdens().filter(o => {
+  const lista = API.listarOrdens().filter(o => {
     if(stFiltro && o.status !== stFiltro) return false;
     if(tpFiltro && o.tipo !== tpFiltro) return false;
     if(filtro){
-      const v = Store.getViatura(o.viaturaId);
+      const v = API.getViatura(o.viaturaId);
       const s = `${o.numero} ${o.descricao} ${o.responsavel} ${v?.numero||''} ${v?.placa||''}`.toLowerCase();
       if(!s.includes(filtro)) return false;
     }
@@ -986,7 +1016,7 @@ function renderOrdens(){
   }
 
   tbody.innerHTML = lista.map(o => {
-    const v = Store.getViatura(o.viaturaId);
+    const v = API.getViatura(o.viaturaId);
     const acoes = [];
     if(o.status !== 'Concluída' && o.status !== 'Cancelada'){
       acoes.push(`<button class="btn-sm" onclick="concluirOrdem(${o.id})" title="Concluir">✅</button>`);
@@ -1012,8 +1042,8 @@ function renderOrdens(){
    HISTÓRICO
    ============================================================ */
 function renderHistorico(){
-  const viaturas = Store.listarViaturas();
-  const concluidas = Store.listarOrdens().filter(o => o.status === 'Concluída');
+  const viaturas = API.listarViaturas();
+  const concluidas = API.listarOrdens().filter(o => o.status === 'Concluída');
 
   const selV = document.getElementById('histViaturaFilter');
   if(selV && selV.options.length <= 1){
@@ -1035,7 +1065,7 @@ function renderHistorico(){
     if(dIni && o.data < dIni) return false;
     if(dFim && o.data > dFim) return false;
     if(filtro){
-      const v = Store.getViatura(o.viaturaId);
+      const v = API.getViatura(o.viaturaId);
       const s = `${o.numero} ${o.descricao} ${o.responsavel} ${v?.numero||''} ${v?.placa||''}`.toLowerCase();
       if(!s.includes(filtro)) return false;
     }
@@ -1054,7 +1084,7 @@ function renderHistorico(){
     return;
   }
   cont.innerHTML = lista.map(o => {
-    const v = Store.getViatura(o.viaturaId);
+    const v = API.getViatura(o.viaturaId);
     return `
       <div class="timeline-item">
         <div class="card" style="margin-bottom:10px;">
@@ -1088,7 +1118,7 @@ function renderHistorico(){
 let charts = {};
 
 function renderDashboard(){
-  const db = Store.getAll();
+  const db = API.getAll();
   const k = calcularKPIs(db);
 
   document.getElementById('dashTotal').textContent = k.total;
@@ -1106,7 +1136,7 @@ function renderDashboard(){
 
 function renderAlertas(){
   const cont = document.getElementById('alertasContainer');
-  const db = Store.getAll();
+  const db = API.getAll();
   const hoje = new Date();
   const alertas = [];
 
@@ -1140,7 +1170,7 @@ function renderAlertas(){
     if(o.status === 'Agendada'){
       const d = new Date(o.data + 'T00:00:00');
       if(d < hoje){
-        const v = Store.getViatura(o.viaturaId);
+        const v = API.getViatura(o.viaturaId);
         alertas.push({ t:'danger', msg:`Ordem ${o.numero} (${v?.numero||'viatura removida'}) está atrasada desde ${fmtData(o.data)}.` });
       }
     }
@@ -1154,7 +1184,7 @@ function renderAlertas(){
 }
 
 function renderChartsDashboard(){
-  const db = Store.getAll();
+  const db = API.getAll();
   const ordens = db.ordensServico;
 
   const porMes = ordensPorMes(ordens.filter(o=>o.status==='Concluída'), 6);
@@ -1195,7 +1225,7 @@ function drawChart(canvasId, type, data){
    INDICADORES
    ============================================================ */
 function renderIndicadores(){
-  const db = Store.getAll();
+  const db = API.getAll();
   const k = calcularKPIs(db);
 
   document.getElementById('kpiDisp').textContent = k.disponibilidade.toFixed(1) + '%';
@@ -1236,7 +1266,7 @@ function renderIndicadores(){
 }
 
 /* ============================================================
-   MAPA / RASTREAMENTO — geocodificado por endereço (Nominatim)
+   MAPA / RASTREAMENTO
    ============================================================ */
 let map = null;
 let markers = {};
@@ -1277,7 +1307,7 @@ function renderMapMarkers() {
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
 
-  const viaturas = Store.listarViaturas().filter(v =>
+  const viaturas = API.listarViaturas().filter(v =>
     typeof v.latitude === 'number' && !isNaN(v.latitude) &&
     typeof v.longitude === 'number' && !isNaN(v.longitude)
   );
@@ -1321,7 +1351,7 @@ function renderMapMarkers() {
 function renderMapList() {
   const cont = document.getElementById('viaturasMapList');
   if (!cont) return;
-  const viaturas = Store.listarViaturas();
+  const viaturas = API.listarViaturas();
 
   if (!viaturas.length) {
     cont.innerHTML = `<div class="empty-state" style="padding:20px;">
@@ -1357,11 +1387,19 @@ function focusViatura(id) {
 }
 
 /* ============================================================
-   INICIALIZAÇÃO
+   INICIALIZAÇÃO — carrega dados da API antes de renderizar
    ============================================================ */
-document.addEventListener('DOMContentLoaded', () => {
-  Store.init();
+function showLoading(msg) {
+  const ov = document.getElementById('loading-overlay');
+  if (msg) document.getElementById('loadingMsg').textContent = msg;
+  ov.classList.add('active');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('active');
+}
 
+document.addEventListener('DOMContentLoaded', async () => {
+  // Listeners de filtros (ligados antes mesmo de carregar dados)
   ['viaturaFilter','viaturaStatusFilter','viaturaUnidadeFilter'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.addEventListener('input', renderViaturas);
@@ -1382,6 +1420,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else { showPage('viaturas'); renderViaturas(); }
   });
 
+  // Re-render automático quando o cache mudar
   window.addEventListener('frota:update', ()=>{
     const ativo = document.querySelector('.page.active')?.id;
     if(ativo === 'dashboard') renderDashboard();
@@ -1392,11 +1431,38 @@ document.addEventListener('DOMContentLoaded', () => {
     if(ativo === 'rastreamento'){ renderMapMarkers(); renderMapList(); }
   });
 
-  renderDashboard();
-  renderViaturas();
-  renderOrdens();
-  renderHistorico();
-  renderIndicadores();
+  // Carrega dados do servidor
+  showLoading('Conectando ao servidor...');
+  try {
+    await API.carregarTudo();
+    document.getElementById('iconStatus').style.color = 'var(--verde)';
+    document.getElementById('iconStatus').title = 'Conectado à API';
+    hideLoading();
+    renderDashboard();
+    renderViaturas();
+    renderOrdens();
+    renderHistorico();
+    renderIndicadores();
+  } catch (e) {
+    hideLoading();
+    document.getElementById('iconStatus').style.color = 'var(--vermelho)';
+    document.getElementById('iconStatus').title = 'Desconectado da API';
+    document.querySelector('.main-content').innerHTML = `
+      <div class="alert danger" style="margin:20px; font-size:15px;">
+        <strong>⚠️ Não foi possível conectar ao servidor</strong>
+        <p style="margin-top:8px; font-size:13px;">
+          URL configurada: <code>${API_URL}</code><br>
+          Erro: <code>${esc(e.message)}</code>
+        </p>
+        <p style="margin-top:12px; font-size:13px;">
+          <b>Verifique:</b><br>
+          1. Se o backend está rodando (local ou em produção).<br>
+          2. Se o arquivo <code>config.js</code> tem a URL correta.<br>
+          3. Se o CORS do backend permite a origem <code>${location.origin}</code>.
+        </p>
+        <button onclick="location.reload()" style="margin-top:12px;">🔄 Tentar novamente</button>
+      </div>`;
+  }
 });
 </script>
 </body>
