@@ -109,6 +109,12 @@ table tbody tr:hover{background:#f9f9f9}
 .toast.info{background:var(--azul-medio)}
 @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
 .actions-cell{display:flex;gap:5px;flex-wrap:wrap}
+#btnFrotaIA{position:fixed;bottom:24px;right:24px;width:60px;height:60px;border-radius:50%;background:var(--azul-marinho);color:var(--amarelo-ouro);font-size:26px;box-shadow:0 6px 18px rgba(0,0,0,.3);z-index:1500;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#btnFrotaIA:hover{background:var(--azul-medio);transform:scale(1.05)}
+#iaChat{flex:1;overflow-y:auto;padding:12px;background:#f9f9f9;border-radius:8px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;min-height:200px}
+#iaChat > div{max-width:85%;padding:10px 14px;border-radius:12px;white-space:pre-wrap;font-size:14px;line-height:1.5}
+#iaChat > div.user{align-self:flex-end;background:var(--azul-medio);color:#fff;border-bottom-right-radius:2px}
+#iaChat > div.ia{align-self:flex-start;background:#fff;color:var(--texto);border:1px solid #e5e5e5;border-bottom-left-radius:2px}
 @media (max-width:768px){
 .sidebar{width:100%;height:auto;position:relative}
 .main-wrapper{margin-left:0}
@@ -125,6 +131,7 @@ table th,table td{padding:8px}
 #map{height:320px !important}
 .map-controls{flex-direction:column}
 .map-controls button{min-width:auto;width:100%}
+#btnFrotaIA{width:52px;height:52px;font-size:22px;bottom:16px;right:16px}
 }
 </style>
 </head>
@@ -139,6 +146,7 @@ table th,table td{padding:8px}
     <li><a href="#" onclick="showPage('historico')" class="menu-link" data-page="historico"><i class="fas fa-history"></i><span>Histórico</span></a></li>
     <li><a href="#" onclick="showPage('rastreamento')" class="menu-link" data-page="rastreamento"><i class="fas fa-map-marker-alt"></i><span>Rastreamento</span></a></li>
     <li><a href="#" onclick="showPage('indicadores')" class="menu-link" data-page="indicadores"><i class="fas fa-chart-bar"></i><span>Indicadores</span></a></li>
+    <li><a href="#" onclick="showPage('preve')" class="menu-link" data-page="preve"><i class="fas fa-brain"></i><span>FrotaPM PREVÊ</span></a></li>
   </ul>
   <div class="sidebar-profile">
     <div class="profile-user">
@@ -171,6 +179,21 @@ table th,table td{padding:8px}
       <div class="stat-card warning"><div class="stat-card-value" id="dashCusto">R$ 0,00</div><div class="stat-card-label">Custo Total Manutenção</div></div>
       <div class="stat-card"><div class="stat-card-value" id="dashDisp">0%</div><div class="stat-card-label">Disponibilidade</div></div>
     </div>
+
+    <!-- CARD PREVISÃO DE FALHAS -->
+    <div class="card" style="margin-top:20px;" id="cardPreve">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+        <h3 style="margin:0;">🔮 Previsão de Falhas</h3>
+        <button onclick="showPage('preve')">Ver análise completa</button>
+      </div>
+      <div class="stats-grid" style="margin-bottom:0;">
+        <div class="stat-card danger"><div class="stat-card-value" id="preveCritico">0</div><div class="stat-card-label">🔴 Risco Crítico</div></div>
+        <div class="stat-card warning"><div class="stat-card-value" id="preveAlto">0</div><div class="stat-card-label">🟠 Risco Alto</div></div>
+        <div class="stat-card" style="border-left-color:#F4C430;"><div class="stat-card-value" id="preveModerado">0</div><div class="stat-card-label">🟡 Risco Moderado</div></div>
+        <div class="stat-card success"><div class="stat-card-value" id="preveSaude">—</div><div class="stat-card-label">💚 Saúde da Frota</div></div>
+      </div>
+    </div>
+
     <div class="charts-container">
       <div class="card"><h3>Manutenções por Mês</h3><canvas id="chartManutencoes"></canvas></div>
       <div class="card"><h3>Status das Viaturas</h3><canvas id="chartStatus"></canvas></div>
@@ -256,17 +279,14 @@ table th,table td{padding:8px}
   <!-- RASTREAMENTO -->
   <div id="rastreamento" class="page">
     <h1 style="margin-bottom:20px; font-size: 28px; font-weight: 700;">Rastreamento</h1>
-
     <div class="alert info" style="margin-bottom:20px;">
       <strong>ℹ️ Modo de visualização — sem GPS real</strong>
       <p>Este sistema não possui integração com GPS. As viaturas no mapa são localizadas pelo <b>endereço cadastrado</b> (geocodificação OpenStreetMap/Nominatim). Se o endereço não for encontrado, a viatura salva normalmente mas não aparece no mapa.</p>
     </div>
-
     <div id="mapGrid" style="display: grid; grid-template-columns: 75% 1fr; gap: 20px;">
       <div class="card" style="padding: 0; overflow: hidden;">
         <div id="map"></div>
       </div>
-
       <div>
         <div class="card">
           <h4 style="margin-bottom: 10px;">Camadas do Mapa</h4>
@@ -276,7 +296,6 @@ table th,table td{padding:8px}
             <button onclick="changeMapType('terrain')" id="btnMapTerrain" class="secondary">🏔️ Terreno</button>
           </div>
         </div>
-
         <div class="card">
           <h4 style="margin-bottom: 10px;">Viaturas</h4>
           <div class="viaturas-list" id="viaturasMapList"></div>
@@ -301,6 +320,53 @@ table th,table td{padding:8px}
     <div class="card" style="margin-top:20px;">
       <h3 style="margin-bottom:15px;">Custos de Manutenção (últimos 6 meses)</h3>
       <canvas id="chartCustos"></canvas>
+    </div>
+  </div>
+
+  <!-- FROTAPM PREVÊ -->
+  <div id="preve" class="page">
+    <h1 style="margin-bottom:20px;font-size:28px;font-weight:700;">🔮 FrotaPM PREVÊ — Previsão de Falhas</h1>
+
+    <div class="alert info" style="margin-bottom:20px;">
+      <strong>ℹ️ Como funciona</strong>
+      <p>Esta análise é <b>baseada nos dados reais já cadastrados</b> (viaturas, ordens de serviço, histórico). Não há IA externa nem números fictícios. Se faltar dado, o fator é simplesmente ignorado. É uma <b>estimativa de risco</b>, não uma garantia de que a falha ocorrerá.</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-card-value" id="prevTotal">0</div><div class="stat-card-label">Viaturas analisadas</div></div>
+      <div class="stat-card danger"><div class="stat-card-value" id="prevCritico">0</div><div class="stat-card-label">🔴 Crítico</div></div>
+      <div class="stat-card warning"><div class="stat-card-value" id="prevAlto">0</div><div class="stat-card-label">🟠 Alto</div></div>
+      <div class="stat-card" style="border-left-color:#F4C430;"><div class="stat-card-value" id="prevModerado">0</div><div class="stat-card-label">🟡 Moderado</div></div>
+      <div class="stat-card success"><div class="stat-card-value" id="prevBaixo">0</div><div class="stat-card-label">🟢 Baixo</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+        <h3 style="margin:0;">🚨 Viaturas que precisam de atenção</h3>
+        <div style="max-width:220px;">
+          <select id="preveFiltroNivel" style="padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:100%;">
+            <option value="">Todos os níveis</option>
+            <option>Crítico</option><option>Alto</option><option>Moderado</option><option>Baixo</option>
+          </select>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Prioridade</th><th>Viatura</th><th>Status</th><th>KM</th>
+              <th>Última manutenção</th><th>Próxima</th><th>Falhas</th>
+              <th>Pontuação</th><th>Nível</th><th>Recomendação</th>
+            </tr>
+          </thead>
+          <tbody id="preveTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:15px;">📋 Plano de prioridade</h3>
+      <div id="prevPrioridade"></div>
     </div>
   </div>
 </div>
@@ -340,7 +406,6 @@ table th,table td{padding:8px}
         <div class="form-group"><label>Próxima Manutenção (KM)</label><input type="number" id="vProxKm" min="0" placeholder="Ex: 50000"></div>
         <div class="form-group"><label>Próxima Manutenção (Data)</label><input type="date" id="vProxData"></div>
       </div>
-
       <div class="form-group">
         <label>Endereço <small style="font-weight:400;color:#666;">(Rua, número, cidade — Brasil)</small></label>
         <input type="text" id="vEndereco" placeholder="Ex: Rua XV de Novembro, 500, Blumenau - SC">
@@ -350,7 +415,6 @@ table th,table td{padding:8px}
         <div class="form-group"><label>Latitude (auto)</label><input type="text" id="vLat" readonly style="background:#f0f0f0;"></div>
         <div class="form-group"><label>Longitude (auto)</label><input type="text" id="vLng" readonly style="background:#f0f0f0;"></div>
       </div>
-
       <div class="form-group"><label>Observações</label><textarea id="vObs"></textarea></div>
       <div class="btn-group">
         <button type="submit" style="flex:1;">Salvar</button>
@@ -407,6 +471,38 @@ table th,table td{padding:8px}
       <button class="danger" style="flex:1;" id="confirmOkBtn">Confirmar</button>
       <button class="secondary" style="flex:1;" onclick="closeModal('modalConfirm')">Cancelar</button>
     </div>
+  </div>
+</div>
+
+<!-- BOTÃO FLUTUANTE FROTA IA -->
+<button id="btnFrotaIA" onclick="toggleFrotaIA()" title="Frota IA — Assistente">🤖</button>
+
+<!-- MODAL FROTA IA -->
+<div id="modalFrotaIA" class="modal">
+  <div class="modal-content" style="max-width:720px;height:80vh;display:flex;flex-direction:column;">
+    <div class="modal-header">
+      <div>
+        <h3 style="margin:0;">🤖 Frota IA</h3>
+        <small style="color:#666;">Assistente inteligente para gestão da sua frota.</small>
+      </div>
+      <button class="modal-close" onclick="toggleFrotaIA()">×</button>
+    </div>
+    <div id="iaChat"></div>
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="iaSugestoes">
+        <button class="secondary btn-sm" onclick="perguntaRapida('Quais veículos precisam de manutenção esta semana?')">Manutenção esta semana</button>
+        <button class="secondary btn-sm" onclick="perguntaRapida('Qual veículo devo priorizar?')">Prioridade</button>
+        <button class="secondary btn-sm" onclick="perguntaRapida('Quais veículos estão em risco alto?')">Risco alto</button>
+        <button class="secondary btn-sm" onclick="perguntaRapida('Quais veículos estão com manutenção atrasada?')">Atrasadas</button>
+        <button class="secondary btn-sm" onclick="perguntaRapida('Como está a disponibilidade da frota?')">Disponibilidade</button>
+        <button class="secondary btn-sm" onclick="perguntaRapida('Qual veículo tem mais falhas?')">Mais falhas</button>
+        <button class="secondary btn-sm" onclick="perguntaRapida('Qual veículo gera maior custo de manutenção?')">Maior custo</button>
+      </div>
+    </div>
+    <form onsubmit="enviarPergunta(event)" style="display:flex;gap:8px;">
+      <input type="text" id="iaInput" placeholder="Digite sua pergunta..." style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;" autocomplete="off">
+      <button type="submit">Enviar</button>
+    </form>
   </div>
 </div>
 
@@ -547,11 +643,9 @@ function confirmar(msg, onOk){
 
 /* ============================================================
    GEOCODIFICAÇÃO via Nominatim (OpenStreetMap) — Brasil
-   Sem API key. Respeita 1 req/s (uso manual, sem problema).
    ============================================================ */
 async function geocodificar(endereco){
   if(!endereco || !endereco.trim()) return null;
-  // Se o usuário não escreveu "Brasil", reforçamos no texto e restringimos o país.
   let q = endereco.trim();
   if(!/\bbrasil\b/i.test(q)) q += ', Brasil';
   const url = 'https://nominatim.openstreetmap.org/search?'
@@ -651,6 +745,7 @@ function showPage(pageId){
   if(pageId === 'ordens') renderOrdens();
   if(pageId === 'historico') renderHistorico();
   if(pageId === 'indicadores') renderIndicadores();
+  if(pageId === 'preve') renderPreve();
   if(pageId === 'rastreamento'){ initMap(); renderMapList(); }
 }
 
@@ -752,7 +847,6 @@ async function salvarViatura(e){
   };
   if(!v.id) delete v.id;
 
-  // Se editou e deixou o endereço em branco, preserva lat/lng antigos
   if(id && !endereco){
     const antiga = Store.getViatura(Number(id));
     if(antiga){
@@ -767,6 +861,7 @@ async function salvarViatura(e){
   toast(id ? 'Viatura atualizada com sucesso!' : 'Viatura cadastrada com sucesso!');
   renderViaturas();
   renderDashboard();
+  atualizarPrevisoes();
   if(document.getElementById('rastreamento').classList.contains('active')){
     renderMapMarkers();
     renderMapList();
@@ -787,6 +882,7 @@ function excluirViatura(id){
     renderDashboard();
     renderOrdens();
     renderHistorico();
+    atualizarPrevisoes();
   });
 }
 
@@ -930,6 +1026,7 @@ function salvarOrdem(e){
   renderDashboard();
   renderHistorico();
   renderIndicadores();
+  atualizarPrevisoes();
 }
 
 function excluirOrdem(id){
@@ -942,6 +1039,7 @@ function excluirOrdem(id){
     renderHistorico();
     renderDashboard();
     renderIndicadores();
+    atualizarPrevisoes();
   });
 }
 
@@ -959,6 +1057,7 @@ function concluirOrdem(id){
     renderHistorico();
     renderDashboard();
     renderIndicadores();
+    atualizarPrevisoes();
   });
 }
 
@@ -1102,6 +1201,7 @@ function renderDashboard(){
 
   renderAlertas();
   renderChartsDashboard();
+  renderPreveDashboard();
 }
 
 function renderAlertas(){
@@ -1236,7 +1336,7 @@ function renderIndicadores(){
 }
 
 /* ============================================================
-   MAPA / RASTREAMENTO — geocodificado por endereço (Nominatim)
+   MAPA / RASTREAMENTO
    ============================================================ */
 let map = null;
 let markers = {};
@@ -1357,6 +1457,423 @@ function focusViatura(id) {
 }
 
 /* ============================================================
+   FROTAPM PREVÊ — Motor de análise de risco
+   ============================================================ */
+function calcularRiscoViatura(viatura, ordensDaViatura) {
+  let score = 0;
+  const motivos = [];
+
+  if (viatura.proximaManutencaoKm && viatura.quilometragem != null) {
+    const diff = viatura.proximaManutencaoKm - viatura.quilometragem;
+    if (diff <= 0) { score += 25; motivos.push(`🔴 Manutenção preventiva por KM atrasada em ${fmtNum(Math.abs(diff))} km`); }
+    else if (diff <= 500) { score += 20; motivos.push(`🟠 Manutenção por KM iminente (${fmtNum(diff)} km restantes)`); }
+    else if (diff <= 2000) { score += 12; motivos.push(`🟡 Manutenção por KM próxima (${fmtNum(diff)} km)`); }
+    else if (diff <= 5000) { score += 5; motivos.push(`🟢 Manutenção por KM dentro do esperado (${fmtNum(diff)} km)`); }
+  }
+
+  if (viatura.proximaManutencaoData) {
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const d = new Date(viatura.proximaManutencaoData + 'T00:00:00');
+    const dias = Math.floor((d - hoje) / 86400000);
+    if (dias < 0) { score += 25; motivos.push(`🔴 Manutenção por data atrasada há ${Math.abs(dias)} dia(s)`); }
+    else if (dias <= 15) { score += 15; motivos.push(`🟡 Manutenção por data em ${dias} dia(s)`); }
+    else if (dias <= 30) { score += 7; motivos.push(`🟢 Manutenção por data em ${dias} dia(s)`); }
+  }
+
+  const seisMesesAtras = Date.now() - 180 * 86400000;
+  const corretivasRecentes = ordensDaViatura.filter(o => {
+    if (o.tipo !== 'Corretiva' || o.status !== 'Concluída') return false;
+    return new Date(o.data + 'T00:00:00').getTime() >= seisMesesAtras;
+  });
+  if (corretivasRecentes.length >= 3) { score += 20; motivos.push(`🔴 ${corretivasRecentes.length} manutenções corretivas nos últimos 6 meses`); }
+  else if (corretivasRecentes.length === 2) { score += 12; motivos.push(`🟠 2 manutenções corretivas recentes`); }
+  else if (corretivasRecentes.length === 1) { score += 6; motivos.push(`🟡 1 manutenção corretiva recente`); }
+
+  const corretivasTodas = ordensDaViatura.filter(o => o.tipo === 'Corretiva' && o.status === 'Concluída');
+  const categorias = {};
+  corretivasTodas.forEach(o => {
+    const c = categorizarFalha(o.descricao);
+    categorias[c] = (categorias[c] || 0) + 1;
+  });
+  const repetidas = Object.entries(categorias).filter(([_, c]) => c >= 2);
+  if (repetidas.length >= 2) { score += 15; motivos.push(`🔴 Múltiplas categorias de falha recorrentes: ${repetidas.map(r => r[0]).join(', ')}`); }
+  else if (repetidas.length === 1) { score += 10; motivos.push(`🟠 Falha recorrente em: ${repetidas[0][0]} (${repetidas[0][1]}x)`); }
+
+  const concluidas = ordensDaViatura.filter(o => o.status === 'Concluída').sort((a, b) => new Date(b.data) - new Date(a.data));
+  const ultima = concluidas[0];
+  let ultimaManutencao = null;
+  let kmDesdeUltima = null;
+  if (ultima) {
+    ultimaManutencao = ultima.data;
+    if (ultima.quilometragem && viatura.quilometragem) {
+      kmDesdeUltima = viatura.quilometragem - ultima.quilometragem;
+      if (kmDesdeUltima > 15000) { score += 10; motivos.push(`🟠 ${fmtNum(kmDesdeUltima)} km rodados desde a última manutenção`); }
+      else if (kmDesdeUltima > 10000) { score += 5; motivos.push(`🟡 ${fmtNum(kmDesdeUltima)} km desde a última manutenção`); }
+    }
+  }
+
+  const idade = new Date().getFullYear() - (Number(viatura.ano) || new Date().getFullYear());
+  if (idade > 10) { score += 5; motivos.push(`🟡 Viatura com ${idade} anos`); }
+  else if (idade > 6) { score += 2; motivos.push(`🟢 Viatura com ${idade} anos`); }
+
+  if (viatura.status === 'Em Manutenção') motivos.push(`⚠️ Viatura já está em manutenção`);
+  if (viatura.status === 'Indisponível') { score += 5; motivos.push(`🔴 Viatura indisponível`); }
+
+  score = Math.min(100, Math.round(score));
+
+  let nivel = 'Baixo';
+  if (score >= 75) nivel = 'Crítico';
+  else if (score >= 50) nivel = 'Alto';
+  else if (score >= 25) nivel = 'Moderado';
+
+  return {
+    score, nivel, motivos,
+    ultimaManutencao, kmDesdeUltima,
+    totalCorretivas: corretivasTodas.length,
+    categorias,
+    recomendacao: gerarRecomendacao(nivel)
+  };
+}
+
+function gerarRecomendacao(nivel) {
+  switch (nivel) {
+    case 'Crítico': return 'Retirar para manutenção imediatamente';
+    case 'Alto':    return 'Realizar revisão preventiva';
+    case 'Moderado':return 'Programar revisão';
+    default:        return 'Manter monitoramento';
+  }
+}
+
+function obterViaturasEmRisco() {
+  const db = Store.getAll();
+  const viaturas = db.viaturas || [];
+  const ordens = db.ordensServico || [];
+  return viaturas.map(v => {
+    const ordensV = ordens.filter(o => o.viaturaId === v.id);
+    const r = calcularRiscoViatura(v, ordensV);
+    return { viatura: v, ...r };
+  }).sort((a, b) => b.score - a.score);
+}
+
+function calcularSaudeFrota() {
+  const analise = obterViaturasEmRisco();
+  if (!analise.length) return null;
+  const scoreMedio = analise.reduce((s, x) => s + x.score, 0) / analise.length;
+  const saude = Math.max(0, Math.round(100 - scoreMedio));
+  let label = 'Ruim';
+  if (saude >= 80) label = 'Boa';
+  else if (saude >= 60) label = 'Regular';
+  else if (saude >= 40) label = 'Atenção';
+  else label = 'Crítica';
+  return { percentual: saude, label };
+}
+
+function resumoPrevisao() {
+  const a = obterViaturasEmRisco();
+  return {
+    total: a.length,
+    critico: a.filter(x => x.nivel === 'Crítico').length,
+    alto: a.filter(x => x.nivel === 'Alto').length,
+    moderado: a.filter(x => x.nivel === 'Moderado').length,
+    baixo: a.filter(x => x.nivel === 'Baixo').length
+  };
+}
+
+function renderPreve() {
+  const analise = obterViaturasEmRisco();
+  const resumo = resumoPrevisao();
+
+  document.getElementById('prevTotal').textContent = resumo.total;
+  document.getElementById('prevCritico').textContent = resumo.critico;
+  document.getElementById('prevAlto').textContent = resumo.alto;
+  document.getElementById('prevModerado').textContent = resumo.moderado;
+  document.getElementById('prevBaixo').textContent = resumo.baixo;
+
+  const filtroNivel = document.getElementById('preveFiltroNivel')?.value || '';
+  const lista = filtroNivel ? analise.filter(x => x.nivel === filtroNivel) : analise;
+
+  const tbody = document.getElementById('preveTable');
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><i class="fas fa-brain"></i>${analise.length ? 'Nenhuma viatura neste nível.' : 'Cadastre viaturas para iniciar a análise.'}</div></td></tr>`;
+  } else {
+    const corNivel = { 'Crítico':'danger', 'Alto':'warning', 'Moderado':'info', 'Baixo':'success' };
+    const emoji = { 'Crítico':'🔴', 'Alto':'🟠', 'Moderado':'🟡', 'Baixo':'🟢' };
+    tbody.innerHTML = lista.map((x, i) => `
+      <tr>
+        <td><strong>${i + 1}º</strong></td>
+        <td><strong>${esc(x.viatura.numero)}</strong><br><small style="color:#666;">${esc(x.viatura.placa)}</small></td>
+        <td>${statusBadge(x.viatura.status)}</td>
+        <td>${fmtNum(x.viatura.quilometragem)} km</td>
+        <td>${x.ultimaManutencao ? fmtData(x.ultimaManutencao) : '<span style="color:#999;">Sem registro</span>'}</td>
+        <td>${x.viatura.proximaManutencaoData ? fmtData(x.viatura.proximaManutencaoData) : (x.viatura.proximaManutencaoKm ? fmtNum(x.viatura.proximaManutencaoKm) + ' km' : '-')}</td>
+        <td>${x.totalCorretivas}</td>
+        <td><strong>${x.score}</strong>/100</td>
+        <td><span class="badge ${corNivel[x.nivel]}">${emoji[x.nivel]} ${x.nivel}</span></td>
+        <td style="font-size:12px;">${esc(x.recomendacao)}</td>
+      </tr>`).join('');
+  }
+
+  const plano = document.getElementById('prevPrioridade');
+  const prioridades = analise.filter(x => x.nivel === 'Crítico' || x.nivel === 'Alto').slice(0, 5);
+  if (!prioridades.length) {
+    plano.innerHTML = `<div class="empty-state"><i class="fas fa-check-circle"></i>Nenhuma viatura exige priorização imediata. Frota em bom estado.</div>`;
+  } else {
+    plano.innerHTML = prioridades.map((x, i) => {
+      const emoji = x.nivel === 'Crítico' ? '🔴' : '🟠';
+      return `
+        <div class="card" style="margin-bottom:12px;border-left:4px solid ${x.nivel === 'Crítico' ? 'var(--vermelho)' : 'var(--laranja)'};">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div>
+              <strong style="font-size:16px;">${emoji} PRIORIDADE ${i + 1} — ${esc(x.viatura.numero)}</strong>
+              <div style="font-size:13px;color:#666;margin-top:4px;">${esc(x.viatura.placa)} • ${esc(x.viatura.modelo)} • ${esc(x.viatura.unidade)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:24px;font-weight:700;color:${x.nivel === 'Crítico' ? 'var(--vermelho)' : 'var(--laranja)'};">${x.score}</div>
+              <small style="color:#999;">pontos de risco</small>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:13px;">
+            <strong>Motivos:</strong>
+            <ul style="margin:6px 0 0 20px;">
+              ${x.motivos.length ? x.motivos.map(m => `<li>${esc(m)}</li>`).join('') : '<li>Sem fatores de risco identificados.</li>'}
+            </ul>
+          </div>
+          <div class="alert info" style="margin-top:12px;margin-bottom:0;">
+            <strong>Recomendação</strong>
+            <p>${esc(x.recomendacao)}</p>
+          </div>
+        </div>`;
+    }).join('');
+  }
+}
+
+function renderPreveDashboard() {
+  const r = resumoPrevisao();
+  const saude = calcularSaudeFrota();
+  const el1 = document.getElementById('preveCritico');
+  const el2 = document.getElementById('preveAlto');
+  const el3 = document.getElementById('preveModerado');
+  const el4 = document.getElementById('preveSaude');
+  if (el1) el1.textContent = r.critico;
+  if (el2) el2.textContent = r.alto;
+  if (el3) el3.textContent = r.moderado;
+  if (el4) el4.textContent = saude ? `${saude.percentual}% (${saude.label})` : '—';
+}
+
+function atualizarPrevisoes() {
+  renderPreveDashboard();
+  if (document.getElementById('preve')?.classList.contains('active')) renderPreve();
+}
+
+/* ============================================================
+   FROTA IA — Assistente rule-based
+   ============================================================ */
+function iaAdicionarMensagem(autor, texto) {
+  const chat = document.getElementById('iaChat');
+  const div = document.createElement('div');
+  div.className = autor === 'user' ? 'user' : 'ia';
+  div.textContent = texto;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function toggleFrotaIA() {
+  const m = document.getElementById('modalFrotaIA');
+  const ativo = m.classList.contains('active');
+  if (ativo) {
+    closeModal('modalFrotaIA');
+  } else {
+    openModal('modalFrotaIA');
+    const chat = document.getElementById('iaChat');
+    if (!chat.children.length) {
+      iaAdicionarMensagem('ia', 'Olá! Sou a Frota IA. Posso responder perguntas sobre suas viaturas, manutenções, custos e riscos com base nos dados cadastrados. Experimente uma das sugestões abaixo ou digite sua pergunta.');
+    }
+    setTimeout(() => document.getElementById('iaInput')?.focus(), 200);
+  }
+}
+
+function perguntaRapida(texto) {
+  const input = document.getElementById('iaInput');
+  input.value = texto;
+  enviarPergunta({ preventDefault: () => {} });
+}
+
+function enviarPergunta(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const input = document.getElementById('iaInput');
+  const pergunta = input.value.trim();
+  if (!pergunta) return;
+  iaAdicionarMensagem('user', pergunta);
+  input.value = '';
+  setTimeout(() => {
+    const resposta = responderPergunta(pergunta);
+    iaAdicionarMensagem('ia', resposta);
+  }, 250);
+}
+
+function responderPergunta(pergunta) {
+  const q = (pergunta || '').toLowerCase().trim();
+  const db = Store.getAll();
+  const viaturas = db.viaturas || [];
+  const ordens = db.ordensServico || [];
+
+  if (!viaturas.length) {
+    return 'Ainda não existem dados suficientes no sistema para realizar essa análise. Cadastre viaturas e ordens de serviço primeiro.';
+  }
+
+  const analise = obterViaturasEmRisco();
+
+  if (/precisam?.*manuten|manuten.*esta semana|esta semana.*manuten|necessitam.*manuten/i.test(q)) {
+    const emRisco = analise.filter(x => x.score >= 25);
+    if (!emRisco.length) return 'Nenhuma viatura precisa de manutenção nos próximos dias. Todas estão em dia.';
+    return `${emRisco.length} veículo(s) precisam de atenção:\n\n` +
+      emRisco.slice(0, 8).map(x =>
+        `🚗 ${x.viatura.numero} — ${x.nivel} (${x.score}/100)\n   ${x.motivos[0] || 'Análise de risco'}`
+      ).join('\n\n');
+  }
+
+  if (/qual.*retirar|qual.*priorizar|quem.*primeiro|devo.*primeiro|prioridade/i.test(q)) {
+    const top = analise[0];
+    if (!top || top.score < 25) return 'Nenhuma viatura apresenta risco significativo no momento. Nada a priorizar.';
+    return `${top.viatura.numero} deve ser priorizada.\n\n` +
+      `Pontuação de risco: ${top.score}/100 (${top.nivel})\n\n` +
+      `Motivos:\n` +
+      (top.motivos.length ? top.motivos.map(m => `• ${m}`).join('\n') : '• Análise geral de risco') +
+      `\n\nRecomendação: ${top.recomendacao}.`;
+  }
+
+  if (/risco alto|risco cr[íi]tico|em risco/i.test(q)) {
+    const emRisco = analise.filter(x => x.nivel === 'Alto' || x.nivel === 'Crítico');
+    if (!emRisco.length) return 'Nenhuma viatura está em risco alto ou crítico no momento.';
+    return `${emRisco.length} viatura(s) em risco alto/crítico:\n\n` +
+      emRisco.map(x => `${x.nivel === 'Crítico' ? '🔴' : '🟠'} ${x.viatura.numero} — ${x.nivel} (${x.score}/100)`).join('\n');
+  }
+
+  if (/mais falhas|maior.*falha|mais problemas|falhas.*frequente/i.test(q)) {
+    const contagem = viaturas.map(v => ({
+      v, count: ordens.filter(o => o.viaturaId === v.id && o.tipo === 'Corretiva' && o.status === 'Concluída').length
+    })).sort((a, b) => b.count - a.count);
+    if (!contagem[0] || contagem[0].count === 0) return 'Nenhuma manutenção corretiva registrada até o momento.';
+    return `A viatura com mais manutenções corretivas é ${contagem[0].v.numero} (${contagem[0].count} registros).`;
+  }
+
+  if (/mais corretiv|corretiva.*frequente/i.test(q)) {
+    return responderPergunta('qual veiculo tem mais falhas');
+  }
+
+  if (/maior custo|custo.*maior|mais caro|gasta mais|custo.*elevado/i.test(q)) {
+    const custos = viaturas.map(v => ({
+      v, total: ordens.filter(o => o.viaturaId === v.id && o.status === 'Concluída')
+                      .reduce((s, o) => s + (Number(o.custo) || 0), 0)
+    })).sort((a, b) => b.total - a.total);
+    if (!custos[0] || custos[0].total === 0) return 'Nenhum custo de manutenção registrado.';
+    return `${custos[0].v.numero} é a viatura com maior custo acumulado: ${fmtMoeda(custos[0].total)}.`;
+  }
+
+  if (/atrasad/i.test(q)) {
+    const atrasadas = viaturas.filter(v => {
+      if (v.proximaManutencaoData && new Date(v.proximaManutencaoData + 'T00:00:00') < new Date()) return true;
+      if (v.proximaManutencaoKm && v.quilometragem >= v.proximaManutencaoKm) return true;
+      return false;
+    });
+    if (!atrasadas.length) return 'Nenhuma viatura com manutenção atrasada.';
+    return `${atrasadas.length} viatura(s) com manutenção atrasada:\n\n` +
+      atrasadas.map(v => `⚠️ ${v.numero} (${v.placa})`).join('\n');
+  }
+
+  if (/pr[óo]xim.*manuten|manuten.*pr[óo]xim/i.test(q)) {
+    const proximas = viaturas.filter(v => {
+      if (v.proximaManutencaoKm) {
+        const diff = v.proximaManutencaoKm - v.quilometragem;
+        if (diff >= 0 && diff <= 2000) return true;
+      }
+      if (v.proximaManutencaoData) {
+        const hoje = new Date(); hoje.setHours(0,0,0,0);
+        const dias = Math.floor((new Date(v.proximaManutencaoData + 'T00:00:00') - hoje) / 86400000);
+        if (dias >= 0 && dias <= 30) return true;
+      }
+      return false;
+    });
+    if (!proximas.length) return 'Nenhuma viatura com manutenção nos próximos 2.000 km ou 30 dias.';
+    return `${proximas.length} viatura(s) próximas da manutenção:\n\n` +
+      proximas.map(v => `• ${v.numero} (${v.placa})`).join('\n');
+  }
+
+  if (/h[áa] mais tempo|sem manuten|mais antiga|nunca.*manuten/i.test(q)) {
+    const comUltima = viaturas.map(v => {
+      const ords = ordens.filter(o => o.viaturaId === v.id && o.status === 'Concluída')
+                         .sort((a, b) => new Date(b.data) - new Date(a.data));
+      return { v, ultima: ords[0]?.data || null };
+    }).filter(x => x.ultima).sort((a, b) => new Date(a.ultima) - new Date(b.ultima));
+    if (!comUltima[0]) return 'Não há manutenções concluídas registradas para calcular isso.';
+    return `${comUltima[0].v.numero} está há mais tempo sem manutenção (última: ${fmtData(comUltima[0].ultima)}).`;
+  }
+
+  if (/tipo.*falha|falha.*frequente|qual.*falha.*mais/i.test(q)) {
+    const cats = {};
+    ordens.filter(o => o.tipo === 'Corretiva' && o.status === 'Concluída').forEach(o => {
+      const c = categorizarFalha(o.descricao);
+      cats[c] = (cats[c] || 0) + 1;
+    });
+    const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
+    if (!sorted.length) return 'Nenhuma manutenção corretiva registrada.';
+    return `Tipo de falha mais frequente: ${sorted[0][0]} (${sorted[0][1]} ocorrência${sorted[0][1] > 1 ? 's' : ''}).`;
+  }
+
+  if (/indispon|paradas|fora de opera/i.test(q)) {
+    const ind = viaturas.filter(v => v.status === 'Indisponível' || v.status === 'Em Manutenção');
+    if (!ind.length) return 'Nenhuma viatura indisponível no momento.';
+    return `${ind.length} viatura(s) indisponível(is):\n\n` +
+      ind.map(v => `• ${v.numero} — ${v.status}`).join('\n');
+  }
+
+  if (/disponibilidade|sa[úu]de|status.*frota|como est[áa].*frota/i.test(q)) {
+    const k = calcularKPIs(db);
+    const saude = calcularSaudeFrota();
+    return `Disponibilidade atual da frota: ${k.disponibilidade.toFixed(1)}%\n` +
+      (saude ? `Saúde geral: ${saude.percentual}% (${saude.label})\n` : '') +
+      `\n• Total: ${k.total} viaturas\n` +
+      `• Em operação: ${k.emOp}\n` +
+      `• Em manutenção: ${k.emMan}\n` +
+      `• Indisponíveis: ${k.indisp}`;
+  }
+
+  if (/cr[íi]tic|piores|mais cr[íi]tico|top.*risco/i.test(q)) {
+    const top = analise.slice(0, 5);
+    if (!top[0]) return 'Nenhuma viatura cadastrada.';
+    return `Viaturas mais críticas (por pontuação de risco):\n\n` +
+      top.map((x, i) => `${i + 1}. ${x.viatura.numero} — ${x.nivel} (${x.score}/100)`).join('\n');
+  }
+
+  if (/quantas.*manuten|total.*manuten|quantas.*os/i.test(q)) {
+    const concl = ordens.filter(o => o.status === 'Concluída').length;
+    const abertas = ordens.filter(o => o.status === 'Agendada' || o.status === 'Em andamento').length;
+    return `Total de ordens: ${ordens.length}\n• Concluídas: ${concl}\n• Abertas/em andamento: ${abertas}`;
+  }
+
+  if (/custo total|gasto total|quanto.*gast/i.test(q)) {
+    const k = calcularKPIs(db);
+    return `Custo total de manutenção (ordens concluídas): ${fmtMoeda(k.custoTotal)}.`;
+  }
+
+  if (/ajuda|help|o que (você )?pode|comandos|perguntas/i.test(q)) {
+    return 'Posso responder perguntas como:\n\n' +
+      '• Quais veículos precisam de manutenção esta semana?\n' +
+      '• Qual veículo devo priorizar?\n' +
+      '• Quais veículos estão em risco alto?\n' +
+      '• Quais veículos estão com manutenção atrasada?\n' +
+      '• Qual veículo tem mais falhas?\n' +
+      '• Qual veículo gera maior custo de manutenção?\n' +
+      '• Como está a disponibilidade da frota?\n' +
+      '• Qual veículo está há mais tempo sem manutenção?\n' +
+      '• Qual foi o tipo de falha mais frequente?\n' +
+      '• Quais são os veículos mais críticos?';
+  }
+
+  return 'Não consegui entender essa pergunta. Tente reformular ou digite "ajuda" para ver as perguntas que posso responder.';
+}
+
+/* ============================================================
    INICIALIZAÇÃO
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1374,6 +1891,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(id);
     if(el) el.addEventListener('input', renderHistorico);
   });
+  const pf = document.getElementById('preveFiltroNivel');
+  if(pf) pf.addEventListener('change', renderPreve);
+
   const si = document.getElementById('searchInput');
   if(si) si.addEventListener('input', ()=>{
     const vf = document.getElementById('viaturaFilter');
@@ -1389,7 +1909,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if(ativo === 'ordens') renderOrdens();
     if(ativo === 'historico') renderHistorico();
     if(ativo === 'indicadores') renderIndicadores();
+    if(ativo === 'preve') renderPreve();
     if(ativo === 'rastreamento'){ renderMapMarkers(); renderMapList(); }
+    atualizarPrevisoes();
   });
 
   renderDashboard();
@@ -1397,6 +1919,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderOrdens();
   renderHistorico();
   renderIndicadores();
+  renderPreveDashboard();
 });
 </script>
 </body>
