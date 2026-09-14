@@ -255,3 +255,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // Notificação de boas-vindas
   setTimeout(() => notificar('✅ Sistema carregado com sucesso!', 'success'), 500);
 });
+// ============================================================
+// RESPONSIVIDADE — TOGGLE DO MENU MOBILE
+// Bloco isolado — não altera nada do sistema existente
+// ============================================================
+document.addEventListener('DOMContentLoaded', function () {
+  var toggle = document.getElementById('menuToggle');
+  var nav = document.getElementById('navPrincipal');
+
+  if (toggle && nav) {
+    toggle.addEventListener('click', function () {
+      nav.classList.toggle('aberto');
+    });
+
+    nav.querySelectorAll('a').forEach(function (link) {
+      link.addEventListener('click', function () {
+        nav.classList.remove('aberto');
+      });
+    });
+  }
+});
