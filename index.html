@@ -2,7 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0D1B2A">
 <title>Frota PM - Blumenau | Sistema de Gestão da Frota</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -11,133 +12,326 @@
 <style>
 :root{--azul-marinho:#0D1B2A;--azul-medio:#1B4F72;--amarelo-ouro:#F4C430;--verde:#2ECC71;--laranja:#F39C12;--vermelho:#E74C3C;--cinza-claro:#F5F7FA;--branco:#FFF;--texto:#2C3E50}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter','Roboto','Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--cinza-claro);color:var(--texto)}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Inter','Roboto','Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--cinza-claro);color:var(--texto);overflow-x:hidden;max-width:100vw}
 html,body,#app{height:100%;width:100%}
-.container{display:flex;height:100vh}
-.sidebar{width:280px;background:var(--azul-marinho);color:#fff;padding:20px;overflow-y:auto;position:fixed;left:0;top:0;height:100vh;z-index:1000}
+img,canvas,svg,video{max-width:100%;height:auto}
+
+/* ============ LAYOUT BASE ============ */
+.container{display:flex;height:100vh;height:100dvh;min-height:100vh;min-height:100dvh;width:100%}
+
+/* ============ SIDEBAR ============ */
+.sidebar{width:280px;background:var(--azul-marinho);color:#fff;padding:20px;overflow-y:auto;position:fixed;left:0;top:0;height:100vh;height:100dvh;z-index:1000;transition:transform .3s ease;-webkit-overflow-scrolling:touch}
 .sidebar-logo{font-size:24px;font-weight:700;margin-bottom:30px;display:flex;align-items:center;gap:10px}
 .sidebar-menu{list-style:none}
 .sidebar-menu li{margin:15px 0}
-.sidebar-menu a{color:#fff;text-decoration:none;display:flex;align-items:center;gap:10px;padding:10px 15px;border-radius:8px;transition:.3s;cursor:pointer}
+.sidebar-menu a{color:#fff;text-decoration:none;display:flex;align-items:center;gap:10px;padding:12px 15px;border-radius:8px;transition:.3s;cursor:pointer;min-height:44px}
 .sidebar-menu a:hover,.sidebar-menu a.active{background:var(--azul-medio);color:var(--amarelo-ouro)}
 .sidebar-profile{position:absolute;bottom:20px;left:20px;right:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,.2)}
 .profile-user{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.profile-avatar{width:40px;height:40px;border-radius:50%;background:var(--amarelo-ouro);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--azul-marinho)}
-.profile-info strong{display:block}
+.profile-avatar{width:40px;height:40px;border-radius:50%;background:var(--amarelo-ouro);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--azul-marinho);flex-shrink:0}
+.profile-info{min-width:0;overflow:hidden}
+.profile-info strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .profile-info small{display:block;font-size:12px;opacity:.8}
-.main-wrapper{flex:1;margin-left:280px;display:flex;flex-direction:column}
-.navbar{height:70px;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 30px;box-shadow:0 2px 10px rgba(0,0,0,.1);z-index:999}
-.navbar-search{flex:1;max-width:400px;margin:0 30px}
-.navbar-search input{width:100%;padding:10px 15px;border:1px solid #ddd;border-radius:8px;font-size:14px}
-.navbar-icons{display:flex;gap:20px;align-items:center}
-.navbar-icons i{cursor:pointer;font-size:18px;color:var(--texto);transition:.3s}
+
+/* Backdrop para mobile */
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;opacity:0;transition:opacity .3s;cursor:pointer}
+.sidebar-backdrop.active{display:block;opacity:1}
+
+/* ============ MAIN WRAPPER ============ */
+.main-wrapper{flex:1;margin-left:280px;display:flex;flex-direction:column;min-width:0;width:calc(100% - 280px)}
+
+/* ============ NAVBAR ============ */
+.navbar{height:70px;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 30px;box-shadow:0 2px 10px rgba(0,0,0,.1);z-index:999;gap:12px}
+.navbar-title{font-size:22px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu-toggle{display:none;background:transparent;border:none;font-size:20px;color:var(--azul-marinho);cursor:pointer;width:44px;height:44px;min-height:44px;padding:0;border-radius:8px;align-items:center;justify-content:center;flex-shrink:0}
+.menu-toggle:hover{background:var(--cinza-claro);color:var(--azul-medio)}
+.navbar-search{flex:1;max-width:400px;margin:0 30px;min-width:0}
+.navbar-search input{width:100%;padding:10px 15px;border:1px solid #ddd;border-radius:8px;font-size:14px;min-height:44px}
+.navbar-icons{display:flex;gap:20px;align-items:center;flex-shrink:0}
+.navbar-icons i{cursor:pointer;font-size:18px;color:var(--texto);transition:.3s;padding:8px;min-width:36px;text-align:center}
 .navbar-icons i:hover{color:var(--azul-medio)}
-.main-content{flex:1;padding:20px;overflow-y:auto}
+
+/* ============ CONTEÚDO ============ */
+.main-content{flex:1;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .page{display:none}
 .page.active{display:block}
+
+/* ============ CARDS ============ */
 .card{background:#fff;border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.1);margin-bottom:20px;transition:.3s}
 .card:hover{box-shadow:0 4px 12px rgba(0,0,0,.15)}
+
+/* ============ STATS GRID ============ */
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}
-.stat-card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);border-left:4px solid var(--azul-medio)}
+.stat-card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);border-left:4px solid var(--azul-medio);min-width:0}
 .stat-card.success{border-left-color:var(--verde)}
 .stat-card.warning{border-left-color:var(--laranja)}
 .stat-card.danger{border-left-color:var(--vermelho)}
-.stat-card-value{font-size:32px;font-weight:700;color:var(--azul-marinho);margin-bottom:5px}
+.stat-card-value{font-size:32px;font-weight:700;color:var(--azul-marinho);margin-bottom:5px;word-break:break-word}
 .stat-card-label{font-size:14px;color:#999}
+
+/* ============ CHARTS ============ */
 .charts-container{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
-button{background:var(--azul-medio);color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:.3s}
+.charts-container > .card{min-width:0;overflow:hidden}
+
+/* ============ BOTÕES ============ */
+button{background:var(--azul-medio);color:#fff;border:none;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:.3s;min-height:40px;font-family:inherit}
 button:hover{background:var(--azul-marinho)}
 button:disabled{opacity:.6;cursor:not-allowed}
 button.secondary{background:#e0e0e0;color:var(--texto)}
 button.secondary:hover{background:#d0d0d0}
 button.danger{background:var(--vermelho)}
 button.danger:hover{background:#c0392b}
-.btn-sm{padding:5px 10px;font-size:12px}
-.btn-group{display:flex;gap:10px;margin-top:15px}
+.btn-sm{padding:6px 10px;font-size:12px;min-height:36px}
+.btn-group{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}
+
+/* ============ TABELAS ============ */
+/* Cada .card que contém tabela ganha scroll horizontal próprio */
+.card{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;background:#fff}
 table thead{background:var(--cinza-claro)}
-table th{padding:15px;text-align:left;font-weight:700;border-bottom:2px solid #ddd}
-table td{padding:12px 15px;border-bottom:1px solid #eee}
+table th{padding:15px;text-align:left;font-weight:700;border-bottom:2px solid #ddd;white-space:nowrap}
+table td{padding:12px 15px;border-bottom:1px solid #eee;white-space:nowrap}
 table tbody tr:hover{background:#f9f9f9}
-.badge{display:inline-block;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.actions-cell{display:flex;gap:5px;flex-wrap:wrap}
+
+/* ============ BADGES ============ */
+.badge{display:inline-block;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
 .badge.success{background:#e8f8f5;color:var(--verde)}
 .badge.warning{background:#fef5e7;color:var(--laranja)}
 .badge.danger{background:#fadbd8;color:var(--vermelho)}
 .badge.info{background:#e3f2fd;color:#1976d2}
-.form-group{margin-bottom:15px}
+
+/* ============ FORMULÁRIOS ============ */
+.form-group{margin-bottom:15px;min-width:0}
 .form-group label{display:block;margin-bottom:5px;font-weight:600;font-size:13px}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-family:inherit}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-family:inherit;min-height:44px;background:#fff;color:var(--texto)}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:2px solid var(--azul-medio);outline-offset:0}
 .form-group textarea{resize:vertical;min-height:70px}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:15px}
 .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:15px}
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center}
+
+/* ============ MODAIS ============ */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center;padding:20px}
 .modal.active{display:flex}
-.modal-content{background:#fff;padding:30px;border-radius:10px;max-width:650px;width:90%;max-height:85vh;overflow-y:auto}
-.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-.modal-header h3{margin:0}
-.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:#999;padding:0}
+.modal-content{background:#fff;padding:30px;border-radius:10px;max-width:650px;width:100%;max-height:85vh;max-height:85dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:10px}
+.modal-header h3{margin:0;overflow-wrap:break-word}
+.modal-close{background:none;border:none;font-size:28px;cursor:pointer;color:#999;padding:0;width:44px;height:44px;min-height:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:8px}
+.modal-close:hover{background:#f0f0f0}
+
+/* ============ MAPA ============ */
 #map{width:100%;height:500px;border-radius:10px}
 .map-controls{display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap}
 .map-controls button{flex:1;min-width:100px}
-.viaturas-list{max-height:400px;overflow-y:auto}
-.viatura-item{padding:10px;background:#f9f9f9;border-left:4px solid #1B4F72;border-radius:4px;margin-bottom:10px;cursor:pointer;transition:.3s}
+
+/* ============ LISTA VIATURAS (mapa) ============ */
+.viaturas-list{max-height:400px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.viatura-item{padding:12px;background:#f9f9f9;border-left:4px solid #1B4F72;border-radius:4px;margin-bottom:10px;cursor:pointer;transition:.3s;min-height:44px}
 .viatura-item:hover,.viatura-item.active{background:#e8f8f5;border-left-color:#2ECC71}
-.viatura-item strong{display:block;margin-bottom:5px}
+.viatura-item strong{display:block;margin-bottom:5px;overflow-wrap:break-word}
 .viatura-item small{display:block;color:#666;font-size:12px}
+
+/* ============ FEEDBACK ============ */
 .spinner{border:4px solid #f3f3f3;border-top:4px solid var(--azul-medio);border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:40px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
-.alert{padding:12px;margin-bottom:15px;border-radius:4px;border-left:4px solid}
+.alert{padding:12px;margin-bottom:15px;border-radius:4px;border-left:4px solid;overflow-wrap:break-word}
 .alert.success{background:#e8f8f5;border-left-color:var(--verde);color:#27ae60}
 .alert.warning{background:#fef5e7;border-left-color:var(--laranja);color:#d68910}
 .alert.danger{background:#fadbd8;border-left-color:var(--vermelho);color:#c0392b}
 .alert.info{background:#e3f2fd;border-left-color:#1976d2;color:#1565c0}
 .alert strong{display:block;margin-bottom:4px}
 .alert p{font-size:12px}
+
+/* ============ TIMELINE ============ */
 .timeline{position:relative;padding-left:60px}
 .timeline::before{content:'';position:absolute;left:30px;top:0;bottom:0;width:2px;background:var(--azul-medio)}
 .timeline-item{position:relative;margin-bottom:30px}
 .timeline-item::before{content:'';position:absolute;left:-50px;top:0;width:20px;height:20px;background:var(--azul-medio);border:3px solid #fff;border-radius:50%}
+
+/* ============ FILTROS ============ */
 .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:15px}
-.filters input,.filters select{padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:100%}
+.filters input,.filters select{padding:10px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:100%;min-height:44px;font-family:inherit}
+
+/* ============ EMPTY STATE ============ */
 .empty-state{text-align:center;padding:40px;color:#999}
 .empty-state i{font-size:48px;margin-bottom:15px;opacity:.5;display:block}
-#toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px}
-.toast{padding:14px 20px;border-radius:8px;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:slideIn .3s ease;min-width:280px;font-size:14px;font-weight:600}
+
+/* ============ TOASTS ============ */
+#toast-container{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;max-width:calc(100vw - 40px)}
+.toast{padding:14px 20px;border-radius:8px;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:slideIn .3s ease;min-width:280px;max-width:100%;font-size:14px;font-weight:600;overflow-wrap:break-word}
 .toast.success{background:var(--verde)}
 .toast.error{background:var(--vermelho)}
 .toast.warning{background:var(--laranja)}
 .toast.info{background:var(--azul-medio)}
 @keyframes slideIn{from{transform:translateX(400px);opacity:0}to{transform:translateX(0);opacity:1}}
-.actions-cell{display:flex;gap:5px;flex-wrap:wrap}
-#btnFrotaIA{position:fixed;bottom:24px;right:24px;width:60px;height:60px;border-radius:50%;background:var(--azul-marinho);color:var(--amarelo-ouro);font-size:26px;box-shadow:0 6px 18px rgba(0,0,0,.3);z-index:1500;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ============ BOTÃO FROTA IA ============ */
+#btnFrotaIA{position:fixed;bottom:24px;right:24px;width:60px;height:60px;border-radius:50%;background:var(--azul-marinho);color:var(--amarelo-ouro);font-size:26px;box-shadow:0 6px 18px rgba(0,0,0,.3);z-index:1500;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;min-height:60px}
 #btnFrotaIA:hover{background:var(--azul-medio);transform:scale(1.05)}
-#iaChat{flex:1;overflow-y:auto;padding:12px;background:#f9f9f9;border-radius:8px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;min-height:200px}
-#iaChat > div{max-width:85%;padding:10px 14px;border-radius:12px;white-space:pre-wrap;font-size:14px;line-height:1.5}
+
+/* ============ CHAT FROTA IA ============ */
+#iaChat{flex:1;overflow-y:auto;padding:12px;background:#f9f9f9;border-radius:8px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;min-height:200px;-webkit-overflow-scrolling:touch}
+#iaChat > div{max-width:85%;padding:10px 14px;border-radius:12px;white-space:pre-wrap;font-size:14px;line-height:1.5;overflow-wrap:break-word}
 #iaChat > div.user{align-self:flex-end;background:var(--azul-medio);color:#fff;border-bottom-right-radius:2px}
 #iaChat > div.ia{align-self:flex-start;background:#fff;color:var(--texto);border:1px solid #e5e5e5;border-bottom-left-radius:2px}
+
+/* ============ RESPONSIVO — NOTEBOOK PEQUENO / TABLET (≤1024px) ============ */
+@media (max-width:1024px){
+  .sidebar{transform:translateX(-100%);box-shadow:6px 0 24px rgba(0,0,0,.25);width:280px}
+  .sidebar.open{transform:translateX(0)}
+  .main-wrapper{margin-left:0;width:100%}
+  .menu-toggle{display:flex}
+  .navbar{padding:0 16px}
+  .navbar-search{margin:0 12px;max-width:none}
+  .charts-container{grid-template-columns:1fr}
+}
+
+/* ============ RESPONSIVO — TABLET PEQUENO / CELULAR GRANDE (≤768px) ============ */
 @media (max-width:768px){
-.sidebar{width:100%;height:auto;position:relative}
-.main-wrapper{margin-left:0}
-.navbar{flex-direction:column;height:auto;gap:10px;padding:10px}
-.navbar-search{max-width:none;margin:0}
-.main-content{margin-top:0}
-.stats-grid{grid-template-columns:1fr}
-.charts-container{grid-template-columns:1fr}
-.form-row,.form-row-3{grid-template-columns:1fr}
-.container{flex-direction:column}
-table{font-size:12px}
-table th,table td{padding:8px}
-#mapGrid{grid-template-columns:1fr !important}
-#map{height:320px !important}
-.map-controls{flex-direction:column}
-.map-controls button{min-width:auto;width:100%}
-#btnFrotaIA{width:52px;height:52px;font-size:22px;bottom:16px;right:16px}
+  .navbar{
+    height:auto;
+    min-height:64px;
+    padding:10px 12px;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .navbar-title{font-size:17px;flex:1;min-width:0}
+  .navbar-search{
+    order:10;
+    flex-basis:100%;
+    margin:8px 0 0;
+    max-width:none;
+  }
+  .navbar-icons{gap:12px}
+  .navbar-icons i{font-size:20px}
+
+  .main-content{padding:14px}
+
+  .stats-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .stat-card{padding:15px}
+  .stat-card-value{font-size:26px}
+
+  .card{padding:15px;margin-bottom:15px}
+  .charts-container{gap:12px}
+
+  .form-row,.form-row-3{grid-template-columns:1fr;gap:12px}
+
+  .filters{grid-template-columns:1fr 1fr}
+  .filters input,.filters select{font-size:14px}
+
+  .modal{padding:10px}
+  .modal-content{padding:20px;max-height:92vh;max-height:92dvh;width:100%}
+
+  table th,table td{padding:10px 12px;font-size:13px}
+  .card > table{min-width:640px}
+
+  #mapGrid{grid-template-columns:1fr !important}
+  #map{height:340px !important}
+  .map-controls{flex-direction:column}
+  .map-controls button{width:100%;min-width:auto}
+
+  .timeline{padding-left:40px}
+  .timeline::before{left:20px}
+  .timeline-item::before{left:-34px;width:16px;height:16px}
+
+  .toast{min-width:auto;width:100%}
+  #toast-container{left:12px;right:12px;top:12px}
+
+  #btnFrotaIA{width:54px;height:54px;font-size:22px;bottom:18px;right:18px;min-height:54px}
+
+  #modalFrotaIA .modal-content{
+    width:100vw;
+    height:100vh;
+    height:100dvh;
+    max-width:100vw;
+    max-height:100vh;
+    max-height:100dvh;
+    border-radius:0;
+    padding:16px;
+  }
+
+  .btn-group{flex-direction:column}
+  .btn-group button{width:100%}
+}
+
+/* ============ RESPONSIVO — CELULAR PEQUENO (≤480px) ============ */
+@media (max-width:480px){
+  .navbar-title{font-size:15px}
+  .navbar-icons i{font-size:18px;padding:6px;min-width:32px}
+
+  .main-content{padding:10px}
+
+  .stats-grid{grid-template-columns:1fr;gap:10px}
+  .stat-card-value{font-size:22px}
+  .stat-card-label{font-size:12px}
+
+  .card{padding:12px}
+  .card > table{min-width:560px}
+  table th,table td{padding:8px 10px;font-size:12px}
+
+  .filters{grid-template-columns:1fr}
+  .sidebar{width:260px}
+
+  .modal-content{padding:16px}
+  .modal-close{font-size:24px}
+
+  #map{height:280px !important}
+  .viaturas-list{max-height:300px}
+
+  .timeline{padding-left:34px}
+  .timeline::before{left:16px}
+  .timeline-item::before{left:-28px;width:14px;height:14px;border-width:2px}
+
+  #btnFrotaIA{width:50px;height:50px;font-size:20px;bottom:14px;right:14px;min-height:50px}
+
+  h1{font-size:22px !important}
+}
+
+/* ============ RESPONSIVO — CELULAR MUITO PEQUENO (≤360px) ============ */
+@media (max-width:360px){
+  .navbar-title{font-size:14px}
+  .stats-grid{grid-template-columns:1fr}
+  .stat-card-value{font-size:20px}
+  .sidebar{width:240px}
+  .card > table{min-width:520px}
+  .main-content{padding:8px}
+  .card{padding:10px}
+}
+
+/* ============ LANDSCAPE EM CELULAR (pouca altura) ============ */
+@media (max-height:500px) and (orientation:landscape){
+  .navbar{min-height:56px;padding:6px 12px}
+  .sidebar{padding:12px}
+  .sidebar-logo{font-size:18px;margin-bottom:15px}
+  .sidebar-menu li{margin:6px 0}
+  .sidebar-menu a{padding:8px 12px;min-height:40px}
+  .sidebar-profile{position:static;margin-top:15px;padding-top:15px}
+  .main-content{padding:10px}
+  #map{height:260px !important}
+  #modalFrotaIA .modal-content{height:100vh;height:100dvh;border-radius:0}
+}
+
+/* ============ ACESSIBILIDADE ============ */
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;animation-duration:.01ms !important;animation-iteration-count:1 !important}
+}
+
+/* ============ SUPORTE A SAFE AREA (iPhone notch) ============ */
+@supports (padding:max(0px)){
+  .navbar{padding-left:max(16px, env(safe-area-inset-left));padding-right:max(16px, env(safe-area-inset-right))}
+  #btnFrotaIA{bottom:max(18px, env(safe-area-inset-bottom));right:max(18px, env(safe-area-inset-right))}
+  .sidebar{padding-left:max(20px, env(safe-area-inset-left))}
 }
 </style>
 </head>
 <body>
 <div id="app" class="container">
-<aside class="sidebar">
+
+<!-- BACKDROP MOBILE (fica atrás da sidebar quando aberta em telas pequenas) -->
+<div class="sidebar-backdrop" onclick="fecharSidebar()"></div>
+
+<aside class="sidebar" id="appSidebar">
   <div class="sidebar-logo"><i class="fas fa-shield-alt"></i><span>Frota PM</span></div>
   <ul class="sidebar-menu">
     <li><a href="#" onclick="showPage('dashboard')" class="menu-link active" data-page="dashboard"><i class="fas fa-home"></i><span>Dashboard</span></a></li>
@@ -158,7 +352,8 @@ table th,table td{padding:8px}
 
 <main class="main-wrapper">
 <nav class="navbar">
-  <h1 style="font-size:22px;font-weight:700;margin:0;">Frota PM - Blumenau</h1>
+  <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Abrir menu"><i class="fas fa-bars"></i></button>
+  <h1 class="navbar-title">Frota PM - Blumenau</h1>
   <div class="navbar-search"><input type="text" placeholder="🔍 Pesquisar viaturas por placa/número..." id="searchInput"></div>
   <div class="navbar-icons"><i class="fas fa-bell" title="Alertas"></i><i class="fas fa-cog" title="Configurações"></i></div>
 </nav>
@@ -180,7 +375,6 @@ table th,table td{padding:8px}
       <div class="stat-card"><div class="stat-card-value" id="dashDisp">0%</div><div class="stat-card-label">Disponibilidade</div></div>
     </div>
 
-    <!-- CARD PREVISÃO DE FALHAS -->
     <div class="card" style="margin-top:20px;" id="cardPreve">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
         <h3 style="margin:0;">🔮 Previsão de Falhas</h3>
@@ -220,7 +414,7 @@ table th,table td{padding:8px}
         <input type="text" placeholder="Unidade/Lotação" id="viaturaUnidadeFilter">
       </div>
     </div>
-    <div class="card" style="overflow-x:auto;">
+    <div class="card">
       <table>
         <thead><tr><th>Número</th><th>Placa</th><th>Modelo</th><th>Tipo</th><th>Ano</th><th>KM</th><th>Unidade</th><th>Status</th><th>Ações</th></tr></thead>
         <tbody id="viaturasTable"></tbody>
@@ -247,7 +441,7 @@ table th,table td{padding:8px}
         </select>
       </div>
     </div>
-    <div class="card" style="overflow-x:auto;">
+    <div class="card">
       <table>
         <thead><tr><th>Número</th><th>Viatura</th><th>Placa</th><th>Tipo</th><th>Data</th><th>Responsável</th><th>Custo</th><th>Status</th><th>Ações</th></tr></thead>
         <tbody id="ordensTable"></tbody>
@@ -326,12 +520,10 @@ table th,table td{padding:8px}
   <!-- FROTAPM PREVÊ -->
   <div id="preve" class="page">
     <h1 style="margin-bottom:20px;font-size:28px;font-weight:700;">🔮 FrotaPM PREVÊ — Previsão de Falhas</h1>
-
     <div class="alert info" style="margin-bottom:20px;">
       <strong>ℹ️ Como funciona</strong>
       <p>Esta análise é <b>baseada nos dados reais já cadastrados</b> (viaturas, ordens de serviço, histórico). Não há IA externa nem números fictícios. Se faltar dado, o fator é simplesmente ignorado. É uma <b>estimativa de risco</b>, não uma garantia de que a falha ocorrerá.</p>
     </div>
-
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-card-value" id="prevTotal">0</div><div class="stat-card-label">Viaturas analisadas</div></div>
       <div class="stat-card danger"><div class="stat-card-value" id="prevCritico">0</div><div class="stat-card-label">🔴 Crítico</div></div>
@@ -339,31 +531,27 @@ table th,table td{padding:8px}
       <div class="stat-card" style="border-left-color:#F4C430;"><div class="stat-card-value" id="prevModerado">0</div><div class="stat-card-label">🟡 Moderado</div></div>
       <div class="stat-card success"><div class="stat-card-value" id="prevBaixo">0</div><div class="stat-card-label">🟢 Baixo</div></div>
     </div>
-
     <div class="card" style="margin-bottom:20px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
         <h3 style="margin:0;">🚨 Viaturas que precisam de atenção</h3>
-        <div style="max-width:220px;">
-          <select id="preveFiltroNivel" style="padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:100%;">
+        <div style="width:100%;max-width:220px;">
+          <select id="preveFiltroNivel" style="padding:10px;border:1px solid #ddd;border-radius:4px;font-size:13px;width:100%;min-height:44px;">
             <option value="">Todos os níveis</option>
             <option>Crítico</option><option>Alto</option><option>Moderado</option><option>Baixo</option>
           </select>
         </div>
       </div>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>Prioridade</th><th>Viatura</th><th>Status</th><th>KM</th>
-              <th>Última manutenção</th><th>Próxima</th><th>Falhas</th>
-              <th>Pontuação</th><th>Nível</th><th>Recomendação</th>
-            </tr>
-          </thead>
-          <tbody id="preveTable"></tbody>
-        </table>
-      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Prioridade</th><th>Viatura</th><th>Status</th><th>KM</th>
+            <th>Última manutenção</th><th>Próxima</th><th>Falhas</th>
+            <th>Pontuação</th><th>Nível</th><th>Recomendação</th>
+          </tr>
+        </thead>
+        <tbody id="preveTable"></tbody>
+      </table>
     </div>
-
     <div class="card">
       <h3 style="margin-bottom:15px;">📋 Plano de prioridade</h3>
       <div id="prevPrioridade"></div>
@@ -466,7 +654,7 @@ table th,table td{padding:8px}
 <div id="modalConfirm" class="modal">
   <div class="modal-content" style="max-width:400px;">
     <div class="modal-header"><h3>Confirmação</h3></div>
-    <p id="confirmMsg" style="margin-bottom:20px;"></p>
+    <p id="confirmMsg" style="margin-bottom:20px;overflow-wrap:break-word;"></p>
     <div class="btn-group">
       <button class="danger" style="flex:1;" id="confirmOkBtn">Confirmar</button>
       <button class="secondary" style="flex:1;" onclick="closeModal('modalConfirm')">Cancelar</button>
@@ -481,7 +669,7 @@ table th,table td{padding:8px}
 <div id="modalFrotaIA" class="modal">
   <div class="modal-content" style="max-width:720px;height:80vh;display:flex;flex-direction:column;">
     <div class="modal-header">
-      <div>
+      <div style="min-width:0;">
         <h3 style="margin:0;">🤖 Frota IA</h3>
         <small style="color:#666;">Assistente inteligente para gestão da sua frota.</small>
       </div>
@@ -499,8 +687,8 @@ table th,table td{padding:8px}
         <button class="secondary btn-sm" onclick="perguntaRapida('Qual veículo gera maior custo de manutenção?')">Maior custo</button>
       </div>
     </div>
-    <form onsubmit="enviarPergunta(event)" style="display:flex;gap:8px;">
-      <input type="text" id="iaInput" placeholder="Digite sua pergunta..." style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;" autocomplete="off">
+    <form onsubmit="enviarPergunta(event)" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input type="text" id="iaInput" placeholder="Digite sua pergunta..." style="flex:1;min-width:160px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;min-height:44px;" autocomplete="off">
       <button type="submit">Enviar</button>
     </form>
   </div>
@@ -642,6 +830,24 @@ function confirmar(msg, onOk){
 }
 
 /* ============================================================
+   MENU MOBILE — apenas UX, não altera lógica de negócio
+   ============================================================ */
+function abrirSidebar(){
+  document.getElementById('appSidebar')?.classList.add('open');
+  document.querySelector('.sidebar-backdrop')?.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function fecharSidebar(){
+  document.getElementById('appSidebar')?.classList.remove('open');
+  document.querySelector('.sidebar-backdrop')?.classList.remove('active');
+  document.body.style.overflow = '';
+}
+function toggleSidebar(){
+  const open = document.getElementById('appSidebar')?.classList.contains('open');
+  if(open) fecharSidebar(); else abrirSidebar();
+}
+
+/* ============================================================
    GEOCODIFICAÇÃO via Nominatim (OpenStreetMap) — Brasil
    ============================================================ */
 async function geocodificar(endereco){
@@ -747,6 +953,9 @@ function showPage(pageId){
   if(pageId === 'indicadores') renderIndicadores();
   if(pageId === 'preve') renderPreve();
   if(pageId === 'rastreamento'){ initMap(); renderMapList(); }
+
+  // Fecha o menu em mobile após escolher uma página
+  if(window.innerWidth <= 1024) fecharSidebar();
 }
 
 function openModal(id){ document.getElementById(id).classList.add('active'); }
@@ -1359,6 +1568,8 @@ function initMap() {
   map = L.map('map').setView([-26.9124, -49.0655], 13);
   currentLayer = mapLayers.osm().addTo(map);
   renderMapMarkers();
+  // Reajusta o mapa quando a tela muda de tamanho/orientação
+  setTimeout(() => map.invalidateSize(), 300);
 }
 
 function changeMapType(type) {
@@ -1636,291 +1847,3 @@ function renderPreve() {
             <strong>Motivos:</strong>
             <ul style="margin:6px 0 0 20px;">
               ${x.motivos.length ? x.motivos.map(m => `<li>${esc(m)}</li>`).join('') : '<li>Sem fatores de risco identificados.</li>'}
-            </ul>
-          </div>
-          <div class="alert info" style="margin-top:12px;margin-bottom:0;">
-            <strong>Recomendação</strong>
-            <p>${esc(x.recomendacao)}</p>
-          </div>
-        </div>`;
-    }).join('');
-  }
-}
-
-function renderPreveDashboard() {
-  const r = resumoPrevisao();
-  const saude = calcularSaudeFrota();
-  const el1 = document.getElementById('preveCritico');
-  const el2 = document.getElementById('preveAlto');
-  const el3 = document.getElementById('preveModerado');
-  const el4 = document.getElementById('preveSaude');
-  if (el1) el1.textContent = r.critico;
-  if (el2) el2.textContent = r.alto;
-  if (el3) el3.textContent = r.moderado;
-  if (el4) el4.textContent = saude ? `${saude.percentual}% (${saude.label})` : '—';
-}
-
-function atualizarPrevisoes() {
-  renderPreveDashboard();
-  if (document.getElementById('preve')?.classList.contains('active')) renderPreve();
-}
-
-/* ============================================================
-   FROTA IA — Assistente rule-based
-   ============================================================ */
-function iaAdicionarMensagem(autor, texto) {
-  const chat = document.getElementById('iaChat');
-  const div = document.createElement('div');
-  div.className = autor === 'user' ? 'user' : 'ia';
-  div.textContent = texto;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function toggleFrotaIA() {
-  const m = document.getElementById('modalFrotaIA');
-  const ativo = m.classList.contains('active');
-  if (ativo) {
-    closeModal('modalFrotaIA');
-  } else {
-    openModal('modalFrotaIA');
-    const chat = document.getElementById('iaChat');
-    if (!chat.children.length) {
-      iaAdicionarMensagem('ia', 'Olá! Sou a Frota IA. Posso responder perguntas sobre suas viaturas, manutenções, custos e riscos com base nos dados cadastrados. Experimente uma das sugestões abaixo ou digite sua pergunta.');
-    }
-    setTimeout(() => document.getElementById('iaInput')?.focus(), 200);
-  }
-}
-
-function perguntaRapida(texto) {
-  const input = document.getElementById('iaInput');
-  input.value = texto;
-  enviarPergunta({ preventDefault: () => {} });
-}
-
-function enviarPergunta(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  const input = document.getElementById('iaInput');
-  const pergunta = input.value.trim();
-  if (!pergunta) return;
-  iaAdicionarMensagem('user', pergunta);
-  input.value = '';
-  setTimeout(() => {
-    const resposta = responderPergunta(pergunta);
-    iaAdicionarMensagem('ia', resposta);
-  }, 250);
-}
-
-function responderPergunta(pergunta) {
-  const q = (pergunta || '').toLowerCase().trim();
-  const db = Store.getAll();
-  const viaturas = db.viaturas || [];
-  const ordens = db.ordensServico || [];
-
-  if (!viaturas.length) {
-    return 'Ainda não existem dados suficientes no sistema para realizar essa análise. Cadastre viaturas e ordens de serviço primeiro.';
-  }
-
-  const analise = obterViaturasEmRisco();
-
-  if (/precisam?.*manuten|manuten.*esta semana|esta semana.*manuten|necessitam.*manuten/i.test(q)) {
-    const emRisco = analise.filter(x => x.score >= 25);
-    if (!emRisco.length) return 'Nenhuma viatura precisa de manutenção nos próximos dias. Todas estão em dia.';
-    return `${emRisco.length} veículo(s) precisam de atenção:\n\n` +
-      emRisco.slice(0, 8).map(x =>
-        `🚗 ${x.viatura.numero} — ${x.nivel} (${x.score}/100)\n   ${x.motivos[0] || 'Análise de risco'}`
-      ).join('\n\n');
-  }
-
-  if (/qual.*retirar|qual.*priorizar|quem.*primeiro|devo.*primeiro|prioridade/i.test(q)) {
-    const top = analise[0];
-    if (!top || top.score < 25) return 'Nenhuma viatura apresenta risco significativo no momento. Nada a priorizar.';
-    return `${top.viatura.numero} deve ser priorizada.\n\n` +
-      `Pontuação de risco: ${top.score}/100 (${top.nivel})\n\n` +
-      `Motivos:\n` +
-      (top.motivos.length ? top.motivos.map(m => `• ${m}`).join('\n') : '• Análise geral de risco') +
-      `\n\nRecomendação: ${top.recomendacao}.`;
-  }
-
-  if (/risco alto|risco cr[íi]tico|em risco/i.test(q)) {
-    const emRisco = analise.filter(x => x.nivel === 'Alto' || x.nivel === 'Crítico');
-    if (!emRisco.length) return 'Nenhuma viatura está em risco alto ou crítico no momento.';
-    return `${emRisco.length} viatura(s) em risco alto/crítico:\n\n` +
-      emRisco.map(x => `${x.nivel === 'Crítico' ? '🔴' : '🟠'} ${x.viatura.numero} — ${x.nivel} (${x.score}/100)`).join('\n');
-  }
-
-  if (/mais falhas|maior.*falha|mais problemas|falhas.*frequente/i.test(q)) {
-    const contagem = viaturas.map(v => ({
-      v, count: ordens.filter(o => o.viaturaId === v.id && o.tipo === 'Corretiva' && o.status === 'Concluída').length
-    })).sort((a, b) => b.count - a.count);
-    if (!contagem[0] || contagem[0].count === 0) return 'Nenhuma manutenção corretiva registrada até o momento.';
-    return `A viatura com mais manutenções corretivas é ${contagem[0].v.numero} (${contagem[0].count} registros).`;
-  }
-
-  if (/mais corretiv|corretiva.*frequente/i.test(q)) {
-    return responderPergunta('qual veiculo tem mais falhas');
-  }
-
-  if (/maior custo|custo.*maior|mais caro|gasta mais|custo.*elevado/i.test(q)) {
-    const custos = viaturas.map(v => ({
-      v, total: ordens.filter(o => o.viaturaId === v.id && o.status === 'Concluída')
-                      .reduce((s, o) => s + (Number(o.custo) || 0), 0)
-    })).sort((a, b) => b.total - a.total);
-    if (!custos[0] || custos[0].total === 0) return 'Nenhum custo de manutenção registrado.';
-    return `${custos[0].v.numero} é a viatura com maior custo acumulado: ${fmtMoeda(custos[0].total)}.`;
-  }
-
-  if (/atrasad/i.test(q)) {
-    const atrasadas = viaturas.filter(v => {
-      if (v.proximaManutencaoData && new Date(v.proximaManutencaoData + 'T00:00:00') < new Date()) return true;
-      if (v.proximaManutencaoKm && v.quilometragem >= v.proximaManutencaoKm) return true;
-      return false;
-    });
-    if (!atrasadas.length) return 'Nenhuma viatura com manutenção atrasada.';
-    return `${atrasadas.length} viatura(s) com manutenção atrasada:\n\n` +
-      atrasadas.map(v => `⚠️ ${v.numero} (${v.placa})`).join('\n');
-  }
-
-  if (/pr[óo]xim.*manuten|manuten.*pr[óo]xim/i.test(q)) {
-    const proximas = viaturas.filter(v => {
-      if (v.proximaManutencaoKm) {
-        const diff = v.proximaManutencaoKm - v.quilometragem;
-        if (diff >= 0 && diff <= 2000) return true;
-      }
-      if (v.proximaManutencaoData) {
-        const hoje = new Date(); hoje.setHours(0,0,0,0);
-        const dias = Math.floor((new Date(v.proximaManutencaoData + 'T00:00:00') - hoje) / 86400000);
-        if (dias >= 0 && dias <= 30) return true;
-      }
-      return false;
-    });
-    if (!proximas.length) return 'Nenhuma viatura com manutenção nos próximos 2.000 km ou 30 dias.';
-    return `${proximas.length} viatura(s) próximas da manutenção:\n\n` +
-      proximas.map(v => `• ${v.numero} (${v.placa})`).join('\n');
-  }
-
-  if (/h[áa] mais tempo|sem manuten|mais antiga|nunca.*manuten/i.test(q)) {
-    const comUltima = viaturas.map(v => {
-      const ords = ordens.filter(o => o.viaturaId === v.id && o.status === 'Concluída')
-                         .sort((a, b) => new Date(b.data) - new Date(a.data));
-      return { v, ultima: ords[0]?.data || null };
-    }).filter(x => x.ultima).sort((a, b) => new Date(a.ultima) - new Date(b.ultima));
-    if (!comUltima[0]) return 'Não há manutenções concluídas registradas para calcular isso.';
-    return `${comUltima[0].v.numero} está há mais tempo sem manutenção (última: ${fmtData(comUltima[0].ultima)}).`;
-  }
-
-  if (/tipo.*falha|falha.*frequente|qual.*falha.*mais/i.test(q)) {
-    const cats = {};
-    ordens.filter(o => o.tipo === 'Corretiva' && o.status === 'Concluída').forEach(o => {
-      const c = categorizarFalha(o.descricao);
-      cats[c] = (cats[c] || 0) + 1;
-    });
-    const sorted = Object.entries(cats).sort((a, b) => b[1] - a[1]);
-    if (!sorted.length) return 'Nenhuma manutenção corretiva registrada.';
-    return `Tipo de falha mais frequente: ${sorted[0][0]} (${sorted[0][1]} ocorrência${sorted[0][1] > 1 ? 's' : ''}).`;
-  }
-
-  if (/indispon|paradas|fora de opera/i.test(q)) {
-    const ind = viaturas.filter(v => v.status === 'Indisponível' || v.status === 'Em Manutenção');
-    if (!ind.length) return 'Nenhuma viatura indisponível no momento.';
-    return `${ind.length} viatura(s) indisponível(is):\n\n` +
-      ind.map(v => `• ${v.numero} — ${v.status}`).join('\n');
-  }
-
-  if (/disponibilidade|sa[úu]de|status.*frota|como est[áa].*frota/i.test(q)) {
-    const k = calcularKPIs(db);
-    const saude = calcularSaudeFrota();
-    return `Disponibilidade atual da frota: ${k.disponibilidade.toFixed(1)}%\n` +
-      (saude ? `Saúde geral: ${saude.percentual}% (${saude.label})\n` : '') +
-      `\n• Total: ${k.total} viaturas\n` +
-      `• Em operação: ${k.emOp}\n` +
-      `• Em manutenção: ${k.emMan}\n` +
-      `• Indisponíveis: ${k.indisp}`;
-  }
-
-  if (/cr[íi]tic|piores|mais cr[íi]tico|top.*risco/i.test(q)) {
-    const top = analise.slice(0, 5);
-    if (!top[0]) return 'Nenhuma viatura cadastrada.';
-    return `Viaturas mais críticas (por pontuação de risco):\n\n` +
-      top.map((x, i) => `${i + 1}. ${x.viatura.numero} — ${x.nivel} (${x.score}/100)`).join('\n');
-  }
-
-  if (/quantas.*manuten|total.*manuten|quantas.*os/i.test(q)) {
-    const concl = ordens.filter(o => o.status === 'Concluída').length;
-    const abertas = ordens.filter(o => o.status === 'Agendada' || o.status === 'Em andamento').length;
-    return `Total de ordens: ${ordens.length}\n• Concluídas: ${concl}\n• Abertas/em andamento: ${abertas}`;
-  }
-
-  if (/custo total|gasto total|quanto.*gast/i.test(q)) {
-    const k = calcularKPIs(db);
-    return `Custo total de manutenção (ordens concluídas): ${fmtMoeda(k.custoTotal)}.`;
-  }
-
-  if (/ajuda|help|o que (você )?pode|comandos|perguntas/i.test(q)) {
-    return 'Posso responder perguntas como:\n\n' +
-      '• Quais veículos precisam de manutenção esta semana?\n' +
-      '• Qual veículo devo priorizar?\n' +
-      '• Quais veículos estão em risco alto?\n' +
-      '• Quais veículos estão com manutenção atrasada?\n' +
-      '• Qual veículo tem mais falhas?\n' +
-      '• Qual veículo gera maior custo de manutenção?\n' +
-      '• Como está a disponibilidade da frota?\n' +
-      '• Qual veículo está há mais tempo sem manutenção?\n' +
-      '• Qual foi o tipo de falha mais frequente?\n' +
-      '• Quais são os veículos mais críticos?';
-  }
-
-  return 'Não consegui entender essa pergunta. Tente reformular ou digite "ajuda" para ver as perguntas que posso responder.';
-}
-
-/* ============================================================
-   INICIALIZAÇÃO
-   ============================================================ */
-document.addEventListener('DOMContentLoaded', () => {
-  Store.init();
-
-  ['viaturaFilter','viaturaStatusFilter','viaturaUnidadeFilter'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.addEventListener('input', renderViaturas);
-  });
-  ['ordemFilter','ordemStatusFilter','ordemTipoFilter'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.addEventListener('input', renderOrdens);
-  });
-  ['histFilter','histViaturaFilter','histTipoFilter','histRespFilter','histDataIni','histDataFim'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.addEventListener('input', renderHistorico);
-  });
-  const pf = document.getElementById('preveFiltroNivel');
-  if(pf) pf.addEventListener('change', renderPreve);
-
-  const si = document.getElementById('searchInput');
-  if(si) si.addEventListener('input', ()=>{
-    const vf = document.getElementById('viaturaFilter');
-    if(vf){ vf.value = si.value; }
-    if(document.getElementById('viaturas')?.classList.contains('active')) renderViaturas();
-    else { showPage('viaturas'); renderViaturas(); }
-  });
-
-  window.addEventListener('frota:update', ()=>{
-    const ativo = document.querySelector('.page.active')?.id;
-    if(ativo === 'dashboard') renderDashboard();
-    if(ativo === 'viaturas') renderViaturas();
-    if(ativo === 'ordens') renderOrdens();
-    if(ativo === 'historico') renderHistorico();
-    if(ativo === 'indicadores') renderIndicadores();
-    if(ativo === 'preve') renderPreve();
-    if(ativo === 'rastreamento'){ renderMapMarkers(); renderMapList(); }
-    atualizarPrevisoes();
-  });
-
-  renderDashboard();
-  renderViaturas();
-  renderOrdens();
-  renderHistorico();
-  renderIndicadores();
-  renderPreveDashboard();
-});
-</script>
-</body>
-</html>
